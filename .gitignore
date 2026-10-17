@@ -1,0 +1,87 @@
+# ========================================================================
+# .gitignore — Sintetizador de Muestra de Agua (Vite + TypeScript)
+#
+# Se versiona:   codigo fuente (src/), pruebas (tests/), configuracion
+#                (package.json, tsconfig.json, index.html), documentacion
+#                (VDD.md) y el lockfile (package-lock.json).
+# No se versiona: dependencias, artefactos de build, cache, logs,
+#                cobertura de tests, variables de entorno y ruido del SO/IDE.
+# ========================================================================
+
+# --- Dependencias instaladas -------------------------------------------
+node_modules/
+.pnp
+.pnp.js
+.pnp.cjs
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+
+# --- Salida de compilacion / build -------------------------------------
+dist/
+dist-ssr/
+build/
+out/
+*.tsbuildinfo
+
+# --- Cache de herramientas ---------------------------------------------
+.cache/
+.vite/
+node_modules/.vite/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.vitest/
+*.tsbuildinfo
+
+# --- Cobertura de pruebas ----------------------------------------------
+coverage/
+.nyc_output/
+*.lcov
+
+# --- Variables de entorno (secretos y config local) --------------------
+# Se conserva el ejemplo para documentar; se ignoran los ficheros reales.
+.env
+.env.*
+!.env.example
+*.env.local
+
+# --- Logs y temporales -------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.tmp
+*.temp
+*.bak
+*.orig
+
+# --- Editores / IDE -----------------------------------------------------
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.code-workspace
+
+# --- Sistema operativo (Windows / macOS / Linux) -----------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+*~

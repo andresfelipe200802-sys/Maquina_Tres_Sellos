@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Sintetizador de Calibracion de Muestra de Agua - Puzzle industrial criptico inspirado en Resident Evil 3." />
+  <title>Water Sample Analyzer</title>
+</head>
+<body>
+  <div class="app crt-flicker">
+
+    <!-- Cabecera del laboratorio -->
+    <header class="app__header">
+      <h1 class="app__title">Water Treatment Synthesizer</h1>
+      <p class="app__subtitle">Raccoon City Water Utility — Terminal 03</p>
+    </header>
+
+    <!-- Panel: Espectro Objetivo -->
+    <section class="panel panel--target" id="panel-target">
+      <span class="panel__label">Reference Sample</span>
+      <canvas id="target-canvas" height="100"></canvas>
+    </section>
+
+    <!-- Panel: Filas de Bloques A, B, C -->
+    <section class="panel panel--rows" id="panel-rows">
+      <span class="panel__label">Calibration Rows</span>
+      <canvas id="rows-canvas" height="220"></canvas>
+    </section>
+
+    <!-- Panel: Suma en Vivo -->
+    <section class="panel panel--spectrum" id="panel-spectrum">
+      <span class="panel__label">Live Sum Spectrum</span>
+      <canvas id="sum-canvas" height="100"></canvas>
+    </section>
+
+    <!-- Controles -->
+    <section class="panel" id="controls">
+      <span class="panel__label">Row Controls</span>
+
+      <div class="controls">
+        <div class="controls__rows">
+          <!-- Fila A -->
+          <div class="row-controls">
+            <span class="row-controls__label">Row A</span>
+            <button class="btn btn--arrow" data-action="shift-left" data-row="0" id="btn-a-left" aria-label="Shift Row A Left">◀</button>
+            <button class="btn btn--arrow" data-action="shift-right" data-row="0" id="btn-a-right" aria-label="Shift Row A Right">▶</button>
+          </div>
+          <!-- Fila B -->
+          <div class="row-controls">
+            <span class="row-controls__label">Row B</span>
+            <button class="btn btn--arrow" data-action="shift-left" data-row="1" id="btn-b-left" aria-label="Shift Row B Left">◀</button>
+            <button class="btn btn--arrow" data-action="shift-right" data-row="1" id="btn-b-right" aria-label="Shift Row B Right">▶</button>
+          </div>
+          <!-- Fila C -->
+          <div class="row-controls">
+            <span class="row-controls__label">Row C</span>
+            <button class="btn btn--arrow" data-action="shift-left" data-row="2" id="btn-c-left" aria-label="Shift Row C Left">◀</button>
+            <button class="btn btn--arrow" data-action="shift-right" data-row="2" id="btn-c-right" aria-label="Shift Row C Right">▶</button>
+          </div>
+        </div>
+
+        <div class="controls__actions">
+          <button class="btn btn--primary" data-action="validate" id="btn-validate">▣ Analyze</button>
+          <button class="btn btn--danger" data-action="reset" id="btn-reset">⟲ Purge</button>
+
+          <!-- Selector de dificultad -->
+          <select class="btn" id="difficulty-select" aria-label="Select Difficulty">
+            <option value="hard">Facility Hard</option>
+            <option value="easy">Facility Easy</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Telemetria -->
+    <section class="panel panel--telemetry">
+      <div class="telemetry">
+        <div class="telemetry__item">
+          <span class="telemetry__value" id="move-counter">0</span>
+          <span class="telemetry__label">Moves</span>
+        </div>
+        <div class="telemetry__item">
+          <span class="telemetry__value" id="fail-counter">0</span>
+          <span class="telemetry__label">Failures</span>
+        </div>
+        <div class="telemetry__item">
+          <span class="status-indicator" id="state-indicator" data-state="STANDBY">STANDBY</span>
+          <span class="telemetry__label">System</span>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Overlay de victoria -->
+  <div class="solved-overlay" id="solved-overlay">
+    <div class="solved-overlay__title">Sample Matched</div>
+    <div class="solved-overlay__subtitle">Water treatment sequence complete</div>
+    <button class="btn btn--primary" data-action="new-game">⟲ New Sample</button>
+  </div>
+
+  <script type="module" src="/src/index.ts"></script>
+</body>
+</html>

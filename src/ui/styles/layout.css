@@ -1,0 +1,131 @@
+/* ========================================================================
+ * layout.css — Cuadricula de instrumentacion y paneles de control.
+ *
+ * Layout responsivo: el laboratorio se reorganiza en una sola columna en
+ * pantallas estrechas. La disposicion principal es una rejilla vertical
+ * de paneles: Target → Rows → Live Sum → Controls → Telemetry.
+ * ====================================================================== */
+
+.app {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 100vh;
+}
+
+/* --- Cabecera del laboratorio --- */
+.app__header {
+  text-align: center;
+  padding: 10px 0 4px;
+}
+
+.app__title {
+  font-size: 0.875rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--crt-text-dim);
+}
+
+.app__subtitle {
+  font-size: 0.625rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(0, 200, 100, 0.3);
+  margin-top: 2px;
+}
+
+/* --- Paneles principales --- */
+.panel--target {
+  min-height: 100px;
+}
+
+.panel--rows {
+  min-height: 200px;
+}
+
+.panel--spectrum {
+  min-height: 100px;
+}
+
+/* --- Zona de controles --- */
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.controls__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.controls__actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+/* --- Panel de telemetria --- */
+.panel--telemetry {
+  display: flex;
+  justify-content: center;
+}
+
+/* --- Panel de resuelto (overlay) --- */
+.solved-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 10, 5, 0.85);
+  z-index: 100;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.solved-overlay--visible {
+  display: flex;
+}
+
+.solved-overlay__title {
+  font-size: 2rem;
+  color: var(--crt-success);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  text-shadow: 0 0 30px rgba(0, 255, 200, 0.5);
+}
+
+.solved-overlay__subtitle {
+  font-size: 0.75rem;
+  color: var(--crt-text-dim);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* --- Responsive --- */
+@media (max-width: 600px) {
+  .app {
+    padding: 8px;
+    gap: 10px;
+  }
+
+  .app__title {
+    font-size: 0.75rem;
+  }
+
+  .controls__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .controls__actions .btn {
+    text-align: center;
+  }
+}
