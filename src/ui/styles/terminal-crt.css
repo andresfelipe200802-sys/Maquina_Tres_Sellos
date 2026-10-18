@@ -278,6 +278,32 @@ canvas {
   background: rgba(0, 30, 15, 0.5);
 }
 
+/* --- Badge de dificultad maxima fija --- */
+.difficulty-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 60, 40, 0.12);
+  border: 1px solid rgba(255, 80, 50, 0.4);
+  border-radius: var(--crt-radius);
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  color: var(--crt-warning);
+  user-select: none;
+  box-shadow: 0 0 10px rgba(255, 60, 40, 0.15);
+}
+
+.difficulty-badge__pulse {
+  color: var(--crt-danger);
+  font-size: 0.8rem;
+  animation: blink 0.8s step-end infinite;
+}
+
+.difficulty-badge__label {
+  font-weight: bold;
+}
+
 /* --- Cartel y Panel de Instrucciones --- */
 .panel--instructions {
   background: linear-gradient(180deg, rgba(0, 32, 16, 0.88) 0%, rgba(0, 16, 8, 0.82) 100%);

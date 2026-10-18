@@ -98,13 +98,10 @@ describe('Integracion UI (index.html + index.ts)', () => {
     expect(text('#move-counter')).toBe('1');
   });
 
-  it('cambiar de dificultad reconstruye el puzzle y reinicia los contadores', () => {
-    const selector = document.querySelector<HTMLSelectElement>('#difficulty-select');
-    expect(selector).not.toBeNull();
-    if (selector !== null) {
-      selector.value = 'easy';
-      selector.dispatchEvent(new Event('change'));
-    }
+  it('reconstruir el puzzle con nueva muestra reinicia los contadores manteniendo máxima dificultad', () => {
+    const overlay = document.querySelector<HTMLElement>('#solved-overlay');
+    const newGameBtn = overlay?.querySelector<HTMLElement>('[data-action="new-game"]');
+    newGameBtn?.click();
     expect(text('#state-indicator')).toBe('EN OPERACIÓN');
     expect(text('#move-counter')).toBe('0');
     expect(text('#fail-counter')).toBe('0');

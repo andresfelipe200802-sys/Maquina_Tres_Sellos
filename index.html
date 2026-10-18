@@ -125,10 +125,13 @@
           <button class="btn btn--primary" data-action="validate" id="btn-validate">▣ Analizar</button>
           <button class="btn btn--danger" data-action="reset" id="btn-reset">⟲ Purgar</button>
 
-          <!-- Selector de dificultad -->
-          <select class="btn" id="difficulty-select" aria-label="Seleccionar Dificultad">
-            <option value="hard">Instalación: Difícil</option>
-            <option value="easy">Instalación: Fácil</option>
+          <!-- Indicador de dificultad fija: Maxima Dificultad -->
+          <div class="difficulty-badge" id="difficulty-badge" title="Nivel de calibración de 16 columnas">
+            <span class="difficulty-badge__pulse">●</span>
+            <span class="difficulty-badge__label">MÁXIMA DIFICULTAD (16 COLUMNAS)</span>
+          </div>
+          <select class="btn" id="difficulty-select" aria-label="Nivel de Dificultad" disabled style="display: none;">
+            <option value="hard" selected>Máxima Dificultad</option>
           </select>
         </div>
       </div>
