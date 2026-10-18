@@ -89,8 +89,8 @@ describe('Integracion UI (index.html + index.ts)', () => {
     }
   });
 
-  it('arranca el sistema en MANIPULATING tras energizar', () => {
-    expect(text('#state-indicator')).toBe('MANIPULATING');
+  it('arranca el sistema en MANIPULATING (EN OPERACIÓN) tras energizar', () => {
+    expect(text('#state-indicator')).toBe('EN OPERACIÓN');
   });
 
   it('el boton shift-right rota la fila y actualiza el contador de movimientos', () => {
@@ -105,7 +105,7 @@ describe('Integracion UI (index.html + index.ts)', () => {
       selector.value = 'easy';
       selector.dispatchEvent(new Event('change'));
     }
-    expect(text('#state-indicator')).toBe('MANIPULATING');
+    expect(text('#state-indicator')).toBe('EN OPERACIÓN');
     expect(text('#move-counter')).toBe('0');
     expect(text('#fail-counter')).toBe('0');
   });
@@ -118,6 +118,6 @@ describe('Integracion UI (index.html + index.ts)', () => {
   it('validar con la combinacion incorrecta incrementa el contador de fallos', () => {
     document.querySelector<HTMLButtonElement>('#btn-validate')?.click();
     expect(text('#fail-counter')).toBe('1');
-    expect(text('#state-indicator')).toBe('MANIPULATING');
+    expect(text('#state-indicator')).toBe('EN OPERACIÓN');
   });
 });

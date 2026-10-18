@@ -128,4 +128,13 @@
   .controls__actions .btn {
     text-align: center;
   }
+
+  .instructions__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .instructions__steps {
+    grid-template-columns: 1fr;
+  }
 }

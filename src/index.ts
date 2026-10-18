@@ -79,6 +79,17 @@ function wireGlobalControls(): void {
     const selector = document.querySelector<HTMLSelectElement>('#difficulty-select');
     bootstrap(selector?.value ?? DEFAULT_DIFFICULTY);
   });
+
+  const toggleInstructionsBtn = document.querySelector<HTMLButtonElement>('#btn-toggle-instructions');
+  const instructionsBody = document.querySelector<HTMLElement>('#instructions-content');
+  toggleInstructionsBtn?.addEventListener('click', () => {
+    const isCollapsed = instructionsBody?.classList.toggle('instructions__body--collapsed');
+    toggleInstructionsBtn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+    const toggleIcon = toggleInstructionsBtn.querySelector('.toggle-icon');
+    const toggleText = toggleInstructionsBtn.querySelector('.toggle-text');
+    if (toggleIcon) toggleIcon.textContent = isCollapsed ? '▼' : '▲';
+    if (toggleText) toggleText.textContent = isCollapsed ? 'Ver Guía' : 'Ocultar Guía';
+  });
 }
 
 function bootstrap(difficulty: string): void {

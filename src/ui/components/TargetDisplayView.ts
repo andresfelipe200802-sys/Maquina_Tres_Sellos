@@ -67,6 +67,6 @@ export class TargetDisplayView implements IPuzzleObserver {
     // Etiqueta
     ctx.fillStyle = 'rgba(0, 200, 100, 0.5)';
     ctx.font = '10px monospace';
-    ctx.fillText('TARGET SAMPLE', 6, 12);
+    ctx.fillText('MUESTRA DE REFERENCIA', 6, 12);
   }
 }

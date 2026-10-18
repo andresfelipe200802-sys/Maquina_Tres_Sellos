@@ -3,70 +3,132 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Sintetizador de Calibracion de Muestra de Agua - Puzzle industrial criptico inspirado en Resident Evil 3." />
-  <title>Water Sample Analyzer</title>
+  <meta name="description" content="Sintetizador de Calibración de Muestra de Agua - Acertijo industrial inspirado en Resident Evil 3." />
+  <title>Sintetizador de Calibración de Muestra de Agua</title>
 </head>
 <body>
   <div class="app crt-flicker">
 
     <!-- Cabecera del laboratorio -->
     <header class="app__header">
-      <h1 class="app__title">Water Treatment Synthesizer</h1>
-      <p class="app__subtitle">Raccoon City Water Utility — Terminal 03</p>
+      <h1 class="app__title">Sintetizador de Tratamiento de Agua</h1>
+      <p class="app__subtitle">Planta de Tratamiento de Agua de Raccoon City — Terminal 03</p>
     </header>
+
+    <!-- Cartel / Panel de Instrucciones y Propósito del Juego -->
+    <section class="panel panel--instructions" id="panel-instructions">
+      <div class="instructions__header">
+        <div class="instructions__title-wrapper">
+          <span class="instructions__hazard-icon">⚠</span>
+          <span class="panel__label instructions__title">MANUAL DE OPERACIÓN // DIRECTIVA DE CALIBRACIÓN</span>
+        </div>
+        <button type="button" class="btn btn--mini instructions__toggle" id="btn-toggle-instructions" aria-expanded="true" aria-controls="instructions-content">
+          <span class="toggle-icon">▲</span> <span class="toggle-text">Ocultar Guía</span>
+        </button>
+      </div>
+
+      <div class="instructions__body" id="instructions-content">
+        <!-- Propósito / Objetivo del Juego -->
+        <div class="instructions__purpose">
+          <div class="instructions__tag">PROPÓSITO DE LA MISIÓN</div>
+          <p class="instructions__description">
+            El suministro hídrico de la instalación está contaminado. Tu objetivo es <strong>alinear y ajustar las tres filas de calibración (Filas A, B y C)</strong> hasta lograr que la <strong>Suma en Vivo</strong> coincida de forma exacta con la <strong>Muestra de Referencia</strong> para purificar el agua y desbloquear el sistema.
+          </p>
+        </div>
+
+        <!-- Pasos a seguir -->
+        <div class="instructions__steps">
+          <div class="step-card">
+            <span class="step-card__num">01</span>
+            <div class="step-card__content">
+              <strong class="step-card__title">Muestra de Referencia</strong>
+              <p>Observa el patrón de barras en el osciloscopio superior. Ese es el espectro exacto que debes igualar.</p>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <span class="step-card__num">02</span>
+            <div class="step-card__content">
+              <strong class="step-card__title">Desplazar Filas A, B y C</strong>
+              <p>Usa los botones ◀ y ▶ para rotar cíclicamente los bloques de cada fila hacia la izquierda o derecha.</p>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <span class="step-card__num">03</span>
+            <div class="step-card__content">
+              <strong class="step-card__title">Monitorear la Suma</strong>
+              <p>
+                El panel inferior suma las 3 filas en tiempo real:
+                <span class="badge-status badge-status--match">Verde = Coincide</span>
+                <span class="badge-status badge-status--mismatch">Rojo = Discrepancia</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <span class="step-card__num">04</span>
+            <div class="step-card__content">
+              <strong class="step-card__title">Analizar y Purgar</strong>
+              <p>Cuando todas las columnas coincidan, presiona <strong>▣ Analizar</strong>. ¡Cuidado! 3 fallos consecutivos activarán el bloqueo del sistema. Usa <strong>⟲ Purgar</strong> si necesitas restablecer.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!-- Panel: Espectro Objetivo -->
     <section class="panel panel--target" id="panel-target">
-      <span class="panel__label">Reference Sample</span>
+      <span class="panel__label">Muestra de Referencia</span>
       <canvas id="target-canvas" height="100"></canvas>
     </section>
 
     <!-- Panel: Filas de Bloques A, B, C -->
     <section class="panel panel--rows" id="panel-rows">
-      <span class="panel__label">Calibration Rows</span>
+      <span class="panel__label">Filas de Calibración</span>
       <canvas id="rows-canvas" height="220"></canvas>
     </section>
 
     <!-- Panel: Suma en Vivo -->
     <section class="panel panel--spectrum" id="panel-spectrum">
-      <span class="panel__label">Live Sum Spectrum</span>
+      <span class="panel__label">Espectro de Suma en Vivo</span>
       <canvas id="sum-canvas" height="100"></canvas>
     </section>
 
     <!-- Controles -->
     <section class="panel" id="controls">
-      <span class="panel__label">Row Controls</span>
+      <span class="panel__label">Controles de Filas</span>
 
       <div class="controls">
         <div class="controls__rows">
           <!-- Fila A -->
           <div class="row-controls">
-            <span class="row-controls__label">Row A</span>
-            <button class="btn btn--arrow" data-action="shift-left" data-row="0" id="btn-a-left" aria-label="Shift Row A Left">◀</button>
-            <button class="btn btn--arrow" data-action="shift-right" data-row="0" id="btn-a-right" aria-label="Shift Row A Right">▶</button>
+            <span class="row-controls__label">Fila A</span>
+            <button class="btn btn--arrow" data-action="shift-left" data-row="0" id="btn-a-left" aria-label="Desplazar Fila A a la izquierda">◀</button>
+            <button class="btn btn--arrow" data-action="shift-right" data-row="0" id="btn-a-right" aria-label="Desplazar Fila A a la derecha">▶</button>
           </div>
           <!-- Fila B -->
           <div class="row-controls">
-            <span class="row-controls__label">Row B</span>
-            <button class="btn btn--arrow" data-action="shift-left" data-row="1" id="btn-b-left" aria-label="Shift Row B Left">◀</button>
-            <button class="btn btn--arrow" data-action="shift-right" data-row="1" id="btn-b-right" aria-label="Shift Row B Right">▶</button>
+            <span class="row-controls__label">Fila B</span>
+            <button class="btn btn--arrow" data-action="shift-left" data-row="1" id="btn-b-left" aria-label="Desplazar Fila B a la izquierda">◀</button>
+            <button class="btn btn--arrow" data-action="shift-right" data-row="1" id="btn-b-right" aria-label="Desplazar Fila B a la derecha">▶</button>
           </div>
           <!-- Fila C -->
           <div class="row-controls">
-            <span class="row-controls__label">Row C</span>
-            <button class="btn btn--arrow" data-action="shift-left" data-row="2" id="btn-c-left" aria-label="Shift Row C Left">◀</button>
-            <button class="btn btn--arrow" data-action="shift-right" data-row="2" id="btn-c-right" aria-label="Shift Row C Right">▶</button>
+            <span class="row-controls__label">Fila C</span>
+            <button class="btn btn--arrow" data-action="shift-left" data-row="2" id="btn-c-left" aria-label="Desplazar Fila C a la izquierda">◀</button>
+            <button class="btn btn--arrow" data-action="shift-right" data-row="2" id="btn-c-right" aria-label="Desplazar Fila C a la derecha">▶</button>
           </div>
         </div>
 
         <div class="controls__actions">
-          <button class="btn btn--primary" data-action="validate" id="btn-validate">▣ Analyze</button>
-          <button class="btn btn--danger" data-action="reset" id="btn-reset">⟲ Purge</button>
+          <button class="btn btn--primary" data-action="validate" id="btn-validate">▣ Analizar</button>
+          <button class="btn btn--danger" data-action="reset" id="btn-reset">⟲ Purgar</button>
 
           <!-- Selector de dificultad -->
-          <select class="btn" id="difficulty-select" aria-label="Select Difficulty">
-            <option value="hard">Facility Hard</option>
-            <option value="easy">Facility Easy</option>
+          <select class="btn" id="difficulty-select" aria-label="Seleccionar Dificultad">
+            <option value="hard">Instalación: Difícil</option>
+            <option value="easy">Instalación: Fácil</option>
           </select>
         </div>
       </div>
@@ -77,15 +139,15 @@
       <div class="telemetry">
         <div class="telemetry__item">
           <span class="telemetry__value" id="move-counter">0</span>
-          <span class="telemetry__label">Moves</span>
+          <span class="telemetry__label">Movimientos</span>
         </div>
         <div class="telemetry__item">
           <span class="telemetry__value" id="fail-counter">0</span>
-          <span class="telemetry__label">Failures</span>
+          <span class="telemetry__label">Fallos</span>
         </div>
         <div class="telemetry__item">
-          <span class="status-indicator" id="state-indicator" data-state="STANDBY">STANDBY</span>
-          <span class="telemetry__label">System</span>
+          <span class="status-indicator" id="state-indicator" data-state="STANDBY">EN ESPERA</span>
+          <span class="telemetry__label">Sistema</span>
         </div>
       </div>
     </section>
@@ -94,9 +156,9 @@
 
   <!-- Overlay de victoria -->
   <div class="solved-overlay" id="solved-overlay">
-    <div class="solved-overlay__title">Sample Matched</div>
-    <div class="solved-overlay__subtitle">Water treatment sequence complete</div>
-    <button class="btn btn--primary" data-action="new-game">⟲ New Sample</button>
+    <div class="solved-overlay__title">¡Muestra Calibrada!</div>
+    <div class="solved-overlay__subtitle">Secuencia de tratamiento de agua completada con éxito</div>
+    <button class="btn btn--primary" data-action="new-game">⟲ Nueva Muestra</button>
   </div>
 
   <script type="module" src="/src/index.ts"></script>

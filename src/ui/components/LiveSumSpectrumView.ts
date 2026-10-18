@@ -80,6 +80,6 @@ export class LiveSumSpectrumView implements IPuzzleObserver {
     // Etiqueta
     ctx.fillStyle = 'rgba(0, 200, 100, 0.5)';
     ctx.font = '10px monospace';
-    ctx.fillText('LIVE SUM SPECTRUM', 6, 12);
+    ctx.fillText('ESPECTRO DE SUMA EN VIVO', 6, 12);
   }
 }

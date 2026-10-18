@@ -14,6 +14,14 @@ export class AttemptCounterView implements IPuzzleObserver {
   private moves = 0;
   private fails = 0;
 
+  private static readonly STATE_LABELS_ES: Record<string, string> = {
+    STANDBY: 'EN ESPERA',
+    MANIPULATING: 'EN OPERACIÓN',
+    EVALUATING: 'EVALUANDO',
+    SOLVED: 'CALIBRADO',
+    LOCKED: 'BLOQUEADO',
+  };
+
   public constructor(
     stateIndicator: HTMLElement,
     moveCounter: HTMLElement,
@@ -41,7 +49,8 @@ export class AttemptCounterView implements IPuzzleObserver {
       this.fails = 0;
     }
 
-    this.stateIndicator.textContent = stateName;
+    const localizedState = AttemptCounterView.STATE_LABELS_ES[stateName] ?? stateName;
+    this.stateIndicator.textContent = localizedState;
     this.stateIndicator.dataset['state'] = stateName;
     this.paint();
   }

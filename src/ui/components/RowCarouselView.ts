@@ -92,9 +92,11 @@ export class RowCarouselView implements IPuzzleObserver {
     if (isLocked) {
       ctx.fillStyle = 'rgba(255, 0, 0, 0.08)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = 'rgba(255, 60, 40, 0.6)';
+      ctx.fillStyle = 'rgba(255, 60, 40, 0.8)';
       ctx.font = 'bold 16px monospace';
-      ctx.fillText('⚠ SYSTEM LOCKED', canvas.width / 2 - 80, canvas.height / 2);
+      ctx.textAlign = 'center';
+      ctx.fillText('⚠ SISTEMA BLOQUEADO', canvas.width / 2, canvas.height / 2);
+      ctx.textAlign = 'start';
     }
   }
 }
