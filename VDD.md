@@ -382,10 +382,10 @@ classDiagram
 - [x] **Hito 3: Bus de Eventos y Desacoplamiento (Observer)**
   - Implementación del sistema de suscripción y notificación.
   - Implementación de observadores mock para validación de flujo de eventos.
-- [ ] **Hito 4: Interfaz de Usuario y Decoradores Visuales**
+- [x] **Hito 4: Interfaz de Usuario y Decoradores Visuales**
   - Construcción de los componentes visuales en Canvas / Web Components con paleta industrial CRT.
   - Implementación de los decoradores gráficos (`HighlightPeakDecorator`, `ScanlineGlitchDecorator`).
   - Conexión de `GameController` y observadores visuales reales.
-- [ ] **Hito 5: Ensayos de Coevaluación y Cierre de Documentación**
+- [x] **Hito 5: Ensayos de Coevaluación y Cierre de Documentación**
   - Ejecución de las listas de chequeo de Caja Negra y Caja Blanca.
   - Generación de evidencias finales y congelamiento de versión para entrega.
