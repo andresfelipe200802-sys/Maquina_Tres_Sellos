@@ -48,54 +48,95 @@ export class RowCarouselView implements IPuzzleObserver {
     const rowCount = rows.length;
     const columns = rows[0]?.length ?? 0;
     const rowHeight = canvas.height / rowCount;
-    const cellWidth = (canvas.width - 40) / columns; // 40px reservados para etiqueta
+    const labelAreaWidth = 44; // Ancho dedicado a la placa de canal
+    const cellWidth = (canvas.width - labelAreaWidth) / columns;
     const isLocked = this.currentStateName === 'LOCKED';
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Fondo del panel
-    ctx.fillStyle = 'rgba(0, 10, 5, 0.6)';
+    // Fondo oscuro industrial del panel de tambores
+    ctx.fillStyle = '#030a06';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Guías verticales de columnas tenues para alineación continua
+    ctx.strokeStyle = 'rgba(0, 200, 90, 0.05)';
+    ctx.lineWidth = 1;
+    for (let c = 0; c <= columns; c++) {
+      const colX = labelAreaWidth + c * cellWidth;
+      ctx.beginPath();
+      ctx.moveTo(colX, 0);
+      ctx.lineTo(colX, canvas.height);
+      ctx.stroke();
+    }
 
     rows.forEach((row, rowIndex) => {
       const yBase = rowIndex * rowHeight;
       const blocks: Block[] = row.getBlocks();
 
-      // Etiqueta de fila
-      ctx.fillStyle = isLocked
-        ? 'rgba(255, 60, 40, 0.8)'
-        : 'rgba(0, 255, 130, 0.7)';
-      ctx.font = 'bold 14px monospace';
-      const label = RowCarouselView.ROW_LABELS[rowIndex] ?? `R${rowIndex}`;
-      ctx.fillText(label, 8, yBase + rowHeight / 2 + 5);
+      // Placa de canal metálica izquierda
+      ctx.fillStyle = isLocked ? 'rgba(30, 8, 8, 0.7)' : 'rgba(0, 20, 10, 0.75)';
+      ctx.fillRect(4, yBase + 4, labelAreaWidth - 8, rowHeight - 8);
+      ctx.strokeStyle = isLocked ? 'rgba(255, 59, 48, 0.3)' : 'rgba(0, 255, 115, 0.2)';
+      ctx.strokeRect(4.5, yBase + 4.5, labelAreaWidth - 9, rowHeight - 9);
 
-      // Separador horizontal
-      ctx.strokeStyle = 'rgba(0, 200, 100, 0.15)';
-      ctx.lineWidth = 1;
+      // Diodo LED de estado de canal
+      ctx.fillStyle = isLocked ? '#ff3b30' : '#00ff73';
       ctx.beginPath();
-      ctx.moveTo(0, yBase + rowHeight);
-      ctx.lineTo(canvas.width, yBase + rowHeight);
-      ctx.stroke();
+      ctx.arc(14, yBase + rowHeight / 2, 3, 0, Math.PI * 2);
+      ctx.fill();
 
-      // Bloques
+      // Etiqueta de fila [A], [B], [C]
+      ctx.fillStyle = isLocked ? '#ff3b30' : '#00ff73';
+      ctx.font = 'bold 12px monospace';
+      const label = RowCarouselView.ROW_LABELS[rowIndex] ?? `R${rowIndex}`;
+      ctx.fillText(label, 24, yBase + rowHeight / 2 + 4);
+
+      // Separador horizontal entre filas
+      if (rowIndex < rowCount - 1) {
+        ctx.strokeStyle = 'rgba(0, 255, 115, 0.12)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, yBase + rowHeight);
+        ctx.lineTo(canvas.width, yBase + rowHeight);
+        ctx.stroke();
+      }
+
+      // Bloques de la fila
       blocks.forEach((block, colIndex) => {
-        const x = 40 + colIndex * cellWidth;
-        const maxBlockPx = rowHeight - 8;
+        const x = labelAreaWidth + colIndex * cellWidth;
+        const maxBlockPx = rowHeight - 10;
         const blockHeight = (block.height / 4) * maxBlockPx;
-        const y = yBase + rowHeight - blockHeight - 4;
+        const y = yBase + rowHeight - blockHeight - 5;
 
         blockView.render(ctx, block, x + 1, y, cellWidth - 2, blockHeight);
       });
     });
 
-    // Indicador de bloqueo superpuesto
+    // Indicador industrial de bloqueo superpuesto
     if (isLocked) {
-      ctx.fillStyle = 'rgba(255, 0, 0, 0.08)';
+      ctx.fillStyle = 'rgba(20, 0, 0, 0.75)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = 'rgba(255, 60, 40, 0.8)';
-      ctx.font = 'bold 16px monospace';
+
+      // Marco de enclavamiento de seguridad
+      const boxWidth = Math.min(canvas.width - 40, 480);
+      const boxHeight = 70;
+      const boxX = (canvas.width - boxWidth) / 2;
+      const boxY = (canvas.height - boxHeight) / 2;
+
+      ctx.fillStyle = 'rgba(40, 8, 8, 0.9)';
+      ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+      ctx.strokeStyle = '#ff3b30';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+
+      ctx.fillStyle = '#ff3b30';
+      ctx.font = 'bold 13px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('⚠ SISTEMA BLOQUEADO', canvas.width / 2, canvas.height / 2);
+      ctx.fillText('⚠ ENCLAVAMIENTO DE SEGURIDAD // 3 FALLOS', canvas.width / 2, boxY + 28);
+
+      ctx.fillStyle = 'rgba(255, 180, 180, 0.9)';
+      ctx.font = '11px monospace';
+      ctx.fillText('ACCIONE LA VÁLVULA DE PURGA PARA DESBLOQUEAR', canvas.width / 2, boxY + 50);
       ctx.textAlign = 'start';
     }
   }

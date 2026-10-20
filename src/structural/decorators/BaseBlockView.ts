@@ -3,22 +3,21 @@ import type { IBlockView } from './IBlockView';
 
 /**
  * Color por altura, resuelta por tabla indexada (sin bifurcaciones).
- * La escala va de verde oscuro (vacio) a verde brillante (cristalino).
+ * Paleta verde fosforo industrial de alta legibilidad y contraste.
  */
 const FILL_BY_HEIGHT: readonly string[] = [
-  'rgba(0, 40, 20, 0.3)',   // 0 - EMPTY
-  'rgba(0, 180, 80, 0.55)', // 1 - TRACE
-  'rgba(0, 220, 100, 0.7)', // 2 - SEDIMENT
-  'rgba(0, 255, 120, 0.85)',// 3 - SUSPENDED
-  'rgba(50, 255, 150, 1)',  // 4 - CRYSTALLINE
+  'rgba(0, 25, 12, 0.25)',   // 0 - VACÍO
+  'rgba(0, 180, 80, 0.65)',  // 1 - TRAZA (Nivel 1)
+  'rgba(0, 215, 95, 0.80)',  // 2 - SEDIMENTO (Nivel 2)
+  'rgba(0, 240, 110, 0.90)', // 3 - SUSPENSIÓN (Nivel 3)
+  'rgba(0, 255, 115, 1.0)',  // 4 - CRISTALINO / PICO (Nivel 4)
 ];
 
 /**
- * Componente concreto (Patron Decorator - Estructural).
+ * Componente concreto (Patrón Decorator - Estructural).
  *
- * Renderizado base: un rectangulo solido con color proporcional a la altura
- * del bloque. Los decoradores concretos envuelven esta clase para anadir
- * efectos sin alterar la entidad de dominio `Block`.
+ * Renderizado base: dibuja celdas segmentadas discretas con bordes limpios
+ * para que el operador reconozca instantáneamente el valor numérico (0 a 4).
  */
 export class BaseBlockView implements IBlockView {
   public render(
@@ -31,11 +30,24 @@ export class BaseBlockView implements IBlockView {
   ): void {
     const fill = FILL_BY_HEIGHT[block.height] ?? FILL_BY_HEIGHT[0];
 
+    // Relleno principal del bloque
     ctx.fillStyle = fill;
     ctx.fillRect(x, y, width, height);
 
-    // Borde sutil para separar celdas
-    ctx.strokeStyle = 'rgba(0, 255, 100, 0.2)';
+    // Segmentación visual interna si la altura es mayor a 1
+    if (block.height > 1 && height > 12) {
+      const segmentHeight = height / block.height;
+      ctx.fillStyle = 'rgba(0, 15, 8, 0.45)';
+      for (let s = 1; s < block.height; s++) {
+        const segY = y + s * segmentHeight;
+        ctx.fillRect(x + 1, segY - 0.5, width - 2, 1);
+      }
+    }
+
+    // Borde técnico perimetral
+    ctx.strokeStyle = block.height === 0
+      ? 'rgba(0, 150, 70, 0.15)'
+      : 'rgba(0, 255, 115, 0.45)';
     ctx.lineWidth = 1;
     ctx.strokeRect(x + 0.5, y + 0.5, width - 1, height - 1);
   }

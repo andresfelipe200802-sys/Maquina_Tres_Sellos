@@ -80,6 +80,7 @@ describe('Integracion UI (index.html + index.ts)', () => {
       '#fail-counter',
       '#controls',
       '#difficulty-select',
+      '#difficulty-badge',
       '#solved-overlay',
       '#btn-a-right',
       '#btn-validate',
@@ -116,5 +117,18 @@ describe('Integracion UI (index.html + index.ts)', () => {
     document.querySelector<HTMLButtonElement>('#btn-validate')?.click();
     expect(text('#fail-counter')).toBe('1');
     expect(text('#state-indicator')).toBe('EN OPERACIÓN');
+  });
+
+  it('mantiene fijo el control de Máxima Dificultad (insignia visible y selector bloqueado)', () => {
+    const badge = document.querySelector<HTMLElement>('#difficulty-badge');
+    const selector = document.querySelector<HTMLSelectElement>('#difficulty-select');
+
+    expect(badge?.textContent?.replace(/\s+/g, ' ').trim()).toContain(
+      'MÁXIMA DIFICULTAD (16 COLUMNAS)',
+    );
+    expect(selector?.disabled).toBe(true);
+    expect(selector?.style.display).toBe('none');
+    expect(selector?.options.length).toBe(1);
+    expect(selector?.value).toBe('hard');
   });
 });

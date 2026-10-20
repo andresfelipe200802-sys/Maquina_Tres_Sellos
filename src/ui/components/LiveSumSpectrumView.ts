@@ -39,47 +39,102 @@ export class LiveSumSpectrumView implements IPuzzleObserver {
     const maxHeight = Math.max(...targetHeights, ...currentSum, 1);
     const columnWidth = canvas.width / columns;
     const isSolved = this.currentStateName === 'SOLVED';
+    const usableHeight = canvas.height - 24;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Fondo del panel
-    ctx.fillStyle = 'rgba(0, 10, 5, 0.6)';
+    // Fondo hundido del osciloscopio
+    ctx.fillStyle = '#030a06';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Fantasma del target (silueta tenue de referencia)
+    // Retícula analógica horizontal de niveles de suma
+    ctx.strokeStyle = 'rgba(0, 255, 115, 0.08)';
+    ctx.lineWidth = 1;
+    for (let level = 1; level <= 4; level++) {
+      const lineY = canvas.height - (level / 4) * usableHeight;
+      ctx.beginPath();
+      ctx.moveTo(0, lineY);
+      ctx.lineTo(canvas.width, lineY);
+      ctx.stroke();
+    }
+
+    // Guías verticales de columnas
+    ctx.strokeStyle = 'rgba(0, 255, 115, 0.04)';
+    for (let col = 0; col <= columns; col++) {
+      const lineX = col * columnWidth;
+      ctx.beginPath();
+      ctx.moveTo(lineX, 18);
+      ctx.lineTo(lineX, canvas.height);
+      ctx.stroke();
+    }
+
+    // Silueta fantasma de referencia (molde objetivo en cian tenue)
     targetHeights.forEach((h, i) => {
-      const barHeight = (h / maxHeight) * (canvas.height - 20);
+      if (h <= 0) return;
+      const barHeight = (h / maxHeight) * usableHeight;
       const x = i * columnWidth;
       const y = canvas.height - barHeight;
-      ctx.fillStyle = 'rgba(0, 100, 60, 0.25)';
+
+      ctx.fillStyle = 'rgba(0, 212, 255, 0.12)';
       ctx.fillRect(x + 2, y, columnWidth - 4, barHeight);
+
+      ctx.strokeStyle = 'rgba(0, 212, 255, 0.25)';
+      ctx.strokeRect(x + 2.5, y + 0.5, columnWidth - 5, barHeight - 1);
     });
 
-    // Suma actual
+    let matchCount = 0;
+
+    // Barras de suma acumulada en vivo
     currentSum.forEach((h, i) => {
-      const barHeight = (h / maxHeight) * (canvas.height - 20);
+      const targetH = targetHeights[i] ?? 0;
+      const matches = h === targetH;
+      if (matches) matchCount++;
+
+      if (h <= 0) return;
+
+      const barHeight = (h / maxHeight) * usableHeight;
       const x = i * columnWidth;
       const y = canvas.height - barHeight;
 
-      const matches = h === targetHeights[i];
       if (isSolved) {
-        ctx.fillStyle = 'rgba(0, 255, 200, 0.9)';
+        ctx.fillStyle = 'rgba(0, 255, 200, 0.95)';
       } else if (matches) {
-        ctx.fillStyle = 'rgba(0, 255, 130, 0.8)';
+        ctx.fillStyle = 'rgba(0, 255, 115, 0.85)';
       } else {
-        ctx.fillStyle = 'rgba(255, 60, 60, 0.7)';
+        ctx.fillStyle = 'rgba(255, 59, 48, 0.75)';
       }
 
       ctx.fillRect(x + 4, y, columnWidth - 8, barHeight);
 
-      // Borde superior
-      ctx.fillStyle = matches ? 'rgba(100, 255, 200, 1)' : 'rgba(255, 120, 80, 1)';
-      ctx.fillRect(x + 4, y, columnWidth - 8, 2);
+      // Borde superior de cresta (fósforo verde o rojo alarma)
+      if (isSolved) {
+        ctx.fillStyle = '#80ffe5';
+      } else if (matches) {
+        ctx.fillStyle = '#00ffaa';
+      } else {
+        ctx.fillStyle = '#ff3b30';
+      }
+      ctx.fillRect(x + 4, y, columnWidth - 8, 2.5);
+
+      // Borde de celda
+      ctx.strokeStyle = matches ? 'rgba(0, 255, 115, 0.35)' : 'rgba(255, 59, 48, 0.35)';
+      ctx.strokeRect(x + 4.5, y + 0.5, columnWidth - 9, barHeight - 1);
     });
 
-    // Etiqueta
-    ctx.fillStyle = 'rgba(0, 200, 100, 0.5)';
-    ctx.font = '10px monospace';
-    ctx.fillText('ESPECTRO DE SUMA EN VIVO', 6, 12);
+    // Etiqueta técnica
+    ctx.fillStyle = isSolved ? '#00ffcc' : '#00ff73';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText('ESPECTRO DE SUMA EN VIVO // CANAL Σ [MEZCLA]', 8, 13);
+
+    // Contador de coincidencia de columnas
+    ctx.fillStyle = isSolved
+      ? '#00ffcc'
+      : matchCount === columns
+        ? '#00ff73'
+        : 'rgba(0, 255, 115, 0.6)';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(`COINCIDENCIA: ${matchCount}/${columns} COL`, canvas.width - 8, 13);
+    ctx.textAlign = 'start';
   }
 }
