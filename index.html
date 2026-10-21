@@ -7,153 +7,170 @@
   <title>Sintetizador de Calibración de Muestra de Agua</title>
 </head>
 <body>
-  <div class="app crt-flicker">
+  <div class="console" id="console-root">
 
-    <!-- Cabecera del laboratorio -->
-    <header class="app__header">
-      <h1 class="app__title">Sintetizador de Tratamiento de Agua</h1>
-      <p class="app__subtitle">Planta de Tratamiento de Agua de Raccoon City — Terminal 03</p>
+    <!-- ═══ CABECERA DE TERMINAL ═══ -->
+    <header class="console__header">
+      <div class="console__header-left">
+        <span class="console__led console__led--green"></span>
+        <h1 class="console__title">Sintetizador de Tratamiento de Agua</h1>
+      </div>
+      <p class="console__subtitle">Planta de Tratamiento de Agua de Raccoon City — Terminal 03</p>
     </header>
 
-    <!-- Cartel / Panel de Instrucciones y Propósito del Juego -->
-    <section class="panel panel--instructions" id="panel-instructions">
-      <div class="instructions__header">
-        <div class="instructions__title-wrapper">
-          <span class="instructions__hazard-icon">⚠</span>
-          <span class="panel__label instructions__title">MANUAL DE OPERACIÓN // DIRECTIVA DE CALIBRACIÓN</span>
-        </div>
-        <button type="button" class="btn btn--mini instructions__toggle" id="btn-toggle-instructions" aria-expanded="true" aria-controls="instructions-content">
-          <span class="toggle-icon">▲</span> <span class="toggle-text">Ocultar Guía</span>
-        </button>
+    <!-- ═══ CUERPO PRINCIPAL: DOS COLUMNAS ═══ -->
+    <main class="console__body" id="controls">
+
+      <!-- ──── COLUMNA PRINCIPAL: PANEL DE CALIBRACIÓN ──── -->
+      <div class="calibration-panel">
+
+        <!-- BANDA 1: SAMPLE (Muestra de Referencia) -->
+        <section class="band band--sample" id="panel-target">
+          <div class="band__label-area">
+            <span class="band__plaque band__plaque--sample">SAMPLE</span>
+            <div class="band__vial">
+              <div class="band__vial-liquid"></div>
+            </div>
+            <span class="band__led band__led--green"></span>
+          </div>
+          <div class="band__screen">
+            <canvas id="target-canvas" height="70"></canvas>
+          </div>
+        </section>
+
+        <!-- BANDA 2–4: FILAS DE CALIBRACIÓN A, B, C (canvas unificado) -->
+        <section class="band band--rows" id="panel-rows">
+          <div class="band__label-area band__label-area--rows">
+            <!-- Placa de canal A -->
+            <div class="band__channel-group">
+              <span class="band__plaque band__plaque--a">A</span>
+              <span class="band__led band__led--a"></span>
+              <div class="band__controls">
+                <button class="band__btn" data-action="shift-left" data-row="0" id="btn-a-left" aria-label="Desplazar Fila A a la izquierda">◀</button>
+                <button class="band__btn" data-action="shift-right" data-row="0" id="btn-a-right" aria-label="Desplazar Fila A a la derecha">▶</button>
+              </div>
+            </div>
+            <!-- Placa de canal B -->
+            <div class="band__channel-group">
+              <span class="band__plaque band__plaque--b">B</span>
+              <span class="band__led band__led--b"></span>
+              <div class="band__controls">
+                <button class="band__btn" data-action="shift-left" data-row="1" id="btn-b-left" aria-label="Desplazar Fila B a la izquierda">◀</button>
+                <button class="band__btn" data-action="shift-right" data-row="1" id="btn-b-right" aria-label="Desplazar Fila B a la derecha">▶</button>
+              </div>
+            </div>
+            <!-- Placa de canal C -->
+            <div class="band__channel-group">
+              <span class="band__plaque band__plaque--c">C</span>
+              <span class="band__led band__led--c"></span>
+              <div class="band__controls">
+                <button class="band__btn" data-action="shift-left" data-row="2" id="btn-c-left" aria-label="Desplazar Fila C a la izquierda">◀</button>
+                <button class="band__btn" data-action="shift-right" data-row="2" id="btn-c-right" aria-label="Desplazar Fila C a la derecha">▶</button>
+              </div>
+            </div>
+          </div>
+          <div class="band__screen band__screen--rows">
+            <canvas id="rows-canvas" height="180"></canvas>
+          </div>
+        </section>
+
+        <!-- BANDA 5: RESULT (Suma en Vivo) -->
+        <section class="band band--result" id="panel-spectrum">
+          <div class="band__label-area">
+            <span class="band__plaque band__plaque--result">RESULT</span>
+            <span class="band__led band__led--result" id="led-result-fail"></span>
+            <span class="band__led band__led--green" id="led-result-ok"></span>
+          </div>
+          <div class="band__screen">
+            <canvas id="sum-canvas" height="70"></canvas>
+          </div>
+        </section>
+
       </div>
 
-      <div class="instructions__body" id="instructions-content">
-        <!-- Propósito / Objetivo del Juego -->
-        <div class="instructions__purpose">
-          <div class="instructions__tag">PROPÓSITO DE LA MISIÓN</div>
-          <p class="instructions__description">
-            El suministro hídrico de la instalación está contaminado. Tu objetivo es <strong>alinear y ajustar las tres filas de calibración (Filas A, B y C)</strong> hasta lograr que la <strong>Suma en Vivo</strong> coincida de forma exacta con la <strong>Muestra de Referencia</strong> para purificar el agua y desbloquear el sistema.
-          </p>
-        </div>
+      <!-- ──── COLUMNA LATERAL: BAHÍA DE OPERACIONES ──── -->
+      <aside class="ops-bay">
 
-        <!-- Pasos a seguir -->
-        <div class="instructions__steps">
-          <div class="step-card">
-            <span class="step-card__num">01</span>
-            <div class="step-card__content">
-              <strong class="step-card__title">Muestra de Referencia</strong>
-              <p>Observa el patrón de barras en el osciloscopio superior. Ese es el espectro exacto que debes igualar.</p>
-            </div>
-          </div>
-
-          <div class="step-card">
-            <span class="step-card__num">02</span>
-            <div class="step-card__content">
-              <strong class="step-card__title">Desplazar Filas A, B y C</strong>
-              <p>Usa los botones ◀ y ▶ para rotar cíclicamente los bloques de cada fila hacia la izquierda o derecha.</p>
-            </div>
-          </div>
-
-          <div class="step-card">
-            <span class="step-card__num">03</span>
-            <div class="step-card__content">
-              <strong class="step-card__title">Monitorear la Suma</strong>
-              <p>
-                El panel inferior suma las 3 filas en tiempo real:
-                <span class="badge-status badge-status--match">Verde = Coincide</span>
-                <span class="badge-status badge-status--mismatch">Rojo = Discrepancia</span>
+        <!-- MÓDULO: AYUDA PLEGABLE -->
+        <div class="ops-bay__module ops-bay__module--help">
+          <button type="button" class="ops-bay__help-toggle" id="btn-toggle-instructions" aria-expanded="false" aria-controls="instructions-content">
+            <span class="ops-bay__help-icon">⚠</span>
+            <span>Manual de Operación</span>
+            <span class="ops-bay__help-chevron" id="help-chevron">▼</span>
+          </button>
+          <div class="ops-bay__help-body instructions__body--collapsed" id="instructions-content">
+            <div class="ops-bay__help-section">
+              <p class="ops-bay__help-purpose">
+                El suministro hídrico de la instalación está contaminado. Alinea las filas <strong>A, B y C</strong> hasta que la suma coincida con la <strong>Muestra de Referencia</strong>.
               </p>
             </div>
+            <ol class="ops-bay__help-steps">
+              <li>Observa el patrón en <strong>SAMPLE</strong> (16 columnas).</li>
+              <li>Usa <strong>◀ ▶</strong> para rotar las filas A, B y C.</li>
+              <li>Monitorea <strong>RESULT</strong>: barras en azul analítico idéntico a SAMPLE. Guíate por el contador superior de coincidencia.</li>
+              <li>Presiona <strong>Analizar Muestra</strong> (máx. 3 intentos). Tienes <strong>15 minutos</strong> antes del enclavamiento de contención.</li>
+            </ol>
           </div>
+        </div>
 
-          <div class="step-card">
-            <span class="step-card__num">04</span>
-            <div class="step-card__content">
-              <strong class="step-card__title">Analizar y Purgar</strong>
-              <p>Cuando todas las columnas coincidan, presiona <strong>▣ Analizar</strong>. ¡Cuidado! 3 fallos consecutivos activarán el bloqueo del sistema. Usa <strong>⟲ Purgar</strong> si necesitas restablecer.</p>
+        <!-- MÓDULO: CRONÓMETRO DE CONTENCIÓN (15 MINUTOS) -->
+        <div class="ops-bay__module ops-bay__module--timer" id="module-timer">
+          <div class="ops-bay__timer-header">
+            <span class="ops-bay__module-title">Cronómetro de Contención</span>
+            <span class="ops-bay__timer-badge" id="timer-badge">LÍMITE 15 MIN</span>
+          </div>
+          <div class="ops-bay__timer-clock" id="timer-clock" data-urgency="normal">
+            <span class="ops-bay__timer-icon" aria-hidden="true">⏱</span>
+            <span class="ops-bay__timer-digits" id="timer-display">15:00</span>
+          </div>
+          <div class="ops-bay__timer-track">
+            <div class="ops-bay__timer-fill" id="timer-progress" style="width: 100%;"></div>
+          </div>
+        </div>
+
+        <!-- MÓDULO: TELEMETRÍA -->
+        <div class="ops-bay__module ops-bay__module--telemetry">
+          <div class="ops-bay__module-title">Telemetría del Sistema</div>
+          <div class="ops-bay__telemetry-grid">
+            <div class="ops-bay__tel-item">
+              <span class="ops-bay__tel-label">Movimientos</span>
+              <span class="ops-bay__tel-value" id="move-counter">0</span>
+            </div>
+            <div class="ops-bay__tel-item">
+              <span class="ops-bay__tel-label">Fallos (Máx 3)</span>
+              <div class="ops-bay__tel-value-row">
+                <span class="ops-bay__tel-value ops-bay__tel-value--fail" id="fail-counter">0</span>
+                <span class="ops-bay__tel-limit">/ 3</span>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Panel: Espectro Objetivo -->
-    <section class="panel panel--target" id="panel-target">
-      <span class="panel__label">Muestra de Referencia</span>
-      <canvas id="target-canvas" height="100"></canvas>
-    </section>
-
-    <!-- Panel: Filas de Bloques A, B, C -->
-    <section class="panel panel--rows" id="panel-rows">
-      <span class="panel__label">Filas de Calibración</span>
-      <canvas id="rows-canvas" height="220"></canvas>
-    </section>
-
-    <!-- Panel: Suma en Vivo -->
-    <section class="panel panel--spectrum" id="panel-spectrum">
-      <span class="panel__label">Espectro de Suma en Vivo</span>
-      <canvas id="sum-canvas" height="100"></canvas>
-    </section>
-
-    <!-- Controles -->
-    <section class="panel" id="controls">
-      <span class="panel__label">Controles de Filas</span>
-
-      <div class="controls">
-        <div class="controls__rows">
-          <!-- Fila A -->
-          <div class="row-controls">
-            <span class="row-controls__label">Fila A</span>
-            <button class="btn btn--arrow" data-action="shift-left" data-row="0" id="btn-a-left" aria-label="Desplazar Fila A a la izquierda">◀</button>
-            <button class="btn btn--arrow" data-action="shift-right" data-row="0" id="btn-a-right" aria-label="Desplazar Fila A a la derecha">▶</button>
-          </div>
-          <!-- Fila B -->
-          <div class="row-controls">
-            <span class="row-controls__label">Fila B</span>
-            <button class="btn btn--arrow" data-action="shift-left" data-row="1" id="btn-b-left" aria-label="Desplazar Fila B a la izquierda">◀</button>
-            <button class="btn btn--arrow" data-action="shift-right" data-row="1" id="btn-b-right" aria-label="Desplazar Fila B a la derecha">▶</button>
-          </div>
-          <!-- Fila C -->
-          <div class="row-controls">
-            <span class="row-controls__label">Fila C</span>
-            <button class="btn btn--arrow" data-action="shift-left" data-row="2" id="btn-c-left" aria-label="Desplazar Fila C a la izquierda">◀</button>
-            <button class="btn btn--arrow" data-action="shift-right" data-row="2" id="btn-c-right" aria-label="Desplazar Fila C a la derecha">▶</button>
+          <div class="ops-bay__status-row">
+            <span class="ops-bay__tel-label">Estado</span>
+            <span class="status-indicator" id="state-indicator" data-state="STANDBY">EN ESPERA</span>
           </div>
         </div>
 
-        <div class="controls__actions">
-          <button class="btn btn--primary" data-action="validate" id="btn-validate">▣ Analizar</button>
-          <button class="btn btn--danger" data-action="reset" id="btn-reset">⟲ Purgar</button>
-
-          <!-- Indicador de dificultad fija: Maxima Dificultad -->
-          <div class="difficulty-badge" id="difficulty-badge" title="Nivel de calibración de 16 columnas">
-            <span class="difficulty-badge__pulse">●</span>
-            <span class="difficulty-badge__label">MÁXIMA DIFICULTAD (16 COLUMNAS)</span>
+        <!-- MÓDULO: ACCIONES PRINCIPALES -->
+        <div class="ops-bay__module ops-bay__module--actions">
+          <div class="ops-bay__module-title">Válvulas y Acciones</div>
+          <button class="ops-bay__action-btn ops-bay__action-btn--analyze" data-action="validate" id="btn-validate">
+            <span class="ops-bay__action-icon">▣</span> Analizar Muestra
+          </button>
+          <button class="ops-bay__action-btn ops-bay__action-btn--purge" data-action="reset" id="btn-reset">
+            <span class="ops-bay__action-icon">⟲</span> Purgar Sistema
+          </button>
+          <div class="ops-bay__difficulty" id="difficulty-badge" title="Nivel de calibración de 16 columnas">
+            <span class="ops-bay__diff-pulse">●</span>
+            <span class="ops-bay__diff-label">MÁXIMA DIFICULTAD (16 COLUMNAS)</span>
           </div>
           <select class="btn" id="difficulty-select" aria-label="Nivel de Dificultad" disabled style="display: none;">
             <option value="hard" selected>Máxima Dificultad</option>
           </select>
         </div>
-      </div>
-    </section>
 
-    <!-- Telemetria -->
-    <section class="panel panel--telemetry">
-      <div class="telemetry">
-        <div class="telemetry__item">
-          <span class="telemetry__value" id="move-counter">0</span>
-          <span class="telemetry__label">Movimientos</span>
-        </div>
-        <div class="telemetry__item">
-          <span class="telemetry__value" id="fail-counter">0</span>
-          <span class="telemetry__label">Fallos</span>
-        </div>
-        <div class="telemetry__item">
-          <span class="status-indicator" id="state-indicator" data-state="STANDBY">EN ESPERA</span>
-          <span class="telemetry__label">Sistema</span>
-        </div>
-      </div>
-    </section>
+      </aside>
+
+    </main>
 
   </div>
 
@@ -161,7 +178,60 @@
   <div class="solved-overlay" id="solved-overlay">
     <div class="solved-overlay__title">¡Muestra Calibrada!</div>
     <div class="solved-overlay__subtitle">Secuencia de tratamiento de agua completada con éxito</div>
-    <button class="btn btn--primary" data-action="new-game">⟲ Nueva Muestra</button>
+    <button class="ops-bay__action-btn ops-bay__action-btn--analyze" data-action="new-game">⟲ Nueva Muestra</button>
+  </div>
+
+  <!-- ═══ OVERLAY DE ENCLAVAMIENTO DE SEGURIDAD (PANTALLA COMPLETA CON LUZ INTERMITENTE Y ANIMACIÓN 3D) ═══ -->
+  <div class="lockdown-overlay" id="lockdown-overlay" role="alertdialog" aria-modal="true" aria-labelledby="lockdown-title">
+    <!-- Luz estroboscópica / Sirena de emergencia intermitente -->
+    <div class="lockdown-overlay__strobe" aria-hidden="true"></div>
+
+    <!-- Panel modal 3D con perspectiva y rotación mecánica -->
+    <div class="lockdown-overlay__panel3d">
+      
+      <!-- Baliza 3D holográfica de peligro -->
+      <div class="lockdown-overlay__badge-wrapper" aria-hidden="true">
+        <div class="lockdown-overlay__badge3d">⚠</div>
+      </div>
+
+      <div class="lockdown-overlay__header">
+        <div class="lockdown-overlay__danger-stripes" aria-hidden="true"></div>
+        <h2 class="lockdown-overlay__title" id="lockdown-title">ENCLAVAMIENTO DE SEGURIDAD</h2>
+        <div class="lockdown-overlay__subtitle">SISTEMA BLOQUEADO POR PROTOCOLO DE CONTENCIÓN</div>
+        <div class="lockdown-overlay__danger-stripes" aria-hidden="true"></div>
+      </div>
+
+      <div class="lockdown-overlay__body">
+        <div class="lockdown-overlay__reason" id="lockdown-reason">
+          <span class="lockdown-overlay__reason-tag">MOTIVO DEL BLOQUEO:</span>
+          <p id="lockdown-reason-text">Se ha alcanzado el límite máximo de 3 análisis fallidos de la muestra.</p>
+        </div>
+
+        <div class="lockdown-overlay__explanation">
+          <p class="lockdown-overlay__desc">
+            Para prevenir una sobrecarga de presión en el circuito hidráulico y la contaminación química del reactor, la terminal ha deshabilitado los mandos de calibración.
+          </p>
+        </div>
+
+        <div class="lockdown-overlay__instructions">
+          <span class="lockdown-overlay__inst-title">¿CÓMO DESBLOQUEAR LA CONSOLA?</span>
+          <p class="lockdown-overlay__inst-text">
+            Presiona el botón <strong>PURGAR Y DESBLOQUEAR SISTEMA</strong>. Esto drenará las líneas de mezcla, restablecerá el contador a 0 fallos y te permitirá reanudar la calibración de inmediato.
+          </p>
+        </div>
+      </div>
+
+      <div class="lockdown-overlay__actions">
+        <button type="button" class="lockdown-overlay__btn-purge" id="btn-lockdown-purge" data-action="reset">
+          <span class="lockdown-overlay__btn-icon">⟲</span>
+          <span>PURGAR Y DESBLOQUEAR SISTEMA</span>
+        </button>
+      </div>
+
+      <div class="lockdown-overlay__footer">
+        <span>DIVISIÓN QUÍMICA DE RACCOON CITY // PROTOCOLO DE SEGURIDAD UMBRELLA-03</span>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="/src/index.ts"></script>

@@ -339,149 +339,260 @@ Lecciones de la referencia que alimentarán las siguientes fases **sin alterar l
 # Fase 3: Diseño de la Distribución (Layout & UI Architecture)
 
 **Fecha de propuesta:** 20 de Octubre de 2026  
-**Marco de referencia:** Directivas de la skill `interface-design` y conclusiones de las Fases 1 y 2.  
-**Objetivo central:** Proponer y contrastar dos arquitecturas espaciales diferentes para el sintetizador de agua, priorizando la legibilidad, la no competencia visual, la eliminación del scroll vertical en resoluciones estándar de escritorio (1080p y 1366×768) y la preservación intacta de todos los elementos funcionales existentes.
+**Marco de referencia:** Directivas de la skill `interface-design`, conclusiones de las Fases 1 y 2, y análisis directo de la **referencia visual de la máquina original** (*Resident Evil 3: Nemesis*, 1999) aportada por el usuario.  
+**Objetivo central:** Proponer y contrastar de manera rigurosa dos arquitecturas espaciales diferentes para el sintetizador de agua antes de escribir código, priorizando la legibilidad del acertijo, la no competencia visual, la eliminación absoluta del scroll vertical en resoluciones de escritorio estándar (1080p y 1366×768) y la preservación intacta del 100 % de los elementos funcionales existentes.
 
 ---
 
-## F3.1. Aplicación de la Disciplina `interface-design`
+## F3.1. Análisis de la Referencia Visual de la Máquina Original (Evidencia Empírica)
+
+La imagen provista por el usuario revela la arquitectura física y funcional del panel de control de la Planta de Tratamiento de Agua:
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│ [ SAMPLE ]  [==🧪 VIAL ==] [●]  [████ █ ████ █ ████ █ ████] (Osciloscopio Muestra)     │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│ [ A  ▶ ]    [■] [ ◄  ► ]        [--■■----■■■----■■----■■--] (Canal A - Rojo Fósforo)   │
+│ [ B  ▶ ]    [■] [ ◄  ► ]        [---■■---■■■---■■■---■■---] (Canal B - Ámbar/Amarillo) │
+│ [ C  ▶ ]    [■] [ ◄  ► ]        [--■■■----■■----■■■---■■--] (Canal C - Cian/Azul)      │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│ [ RESULT ]                      [████ █ ████ █ ████ █ ████] (Suma en Vivo)   (●) (●)   │
+│                                                                              (LEDs)    │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Características Críticas del Dispositivo Físico Reveladas por la Imagen:
+1. **Consola Monolítica Estructurada en 5 Bandas Horizontales:**
+   * La máquina no dispersa los elementos en bloques inconexos: es un chasis de metal oxidado y atornillado que integra toda la cadena de análisis en 5 filas estrictamente alineadas en el eje horizontal.
+2. **Banda Superior (`SAMPLE`):**
+   * A la izquierda: Placa metálica atornillada rotulada `SAMPLE`, acompañada de un **vial/cápsula cilíndrica de vidrio** que contiene la muestra física de agua recogida y un diodo LED cuadrado de estado.
+   * A la derecha: La pantalla de osciloscopio que despliega el patrón objetivo con su cuadrícula verde milimetrada y ondas escalonadas en varios niveles de altura.
+3. **Bandas de Calibración Intermedias (`A`, `B`, `C`):**
+   * **Correspondencia ergonómica directa:** Cada fila posee su módulo de mando **inmediatamente a la izquierda de su propia pantalla**:
+     * Placa rotulada con la letra del canal (`A`, `B`, `C`) y flecha direccional.
+     * Indicador cuadrado selector de canal.
+     * Conmutador basculante horizontal o doble botón `[ ◄ ► ]` para el desplazamiento circular hacia la izquierda o hacia la derecha.
+   * **Diferenciación cromática por canal:** Cada fila de entrada posee una firma cromática propia que destaca sobre la retícula verde fósforo de fondo:
+     * **Canal A:** Segmentos en **Rojo industrial** (`#e63946` / `#ff4d4d`).
+     * **Canal B:** Segmentos en **Ámbar / Amarillo técnico** (`#ffb703` / `#f4a261`).
+     * **Canal C:** Segmentos en **Cian / Azul eléctrico** (`#00b4d8` / `#48cae4`).
+4. **Banda Inferior (`RESULT`):**
+   * A la izquierda: Placa metálica atornillada rotulada `RESULT`.
+   * Al centro-derecha: Pantalla de osciloscopio que despliega el resultado combinado de las tres filas (en verde fósforo de resonancia).
+   * En el extremo derecho: Lámparas/LEDs indicadores de estado del sistema (testigo rojo de alarma/enclavamiento y botón auxiliar de verificación).
+5. **Alineación Vertical Milimétrica (El Eje de Resolución):**
+   * Todas las pantallas (SAMPLE, A, B, C y RESULT) tienen exactamente el **mismo ancho horizontal** y comparten una **retícula común de columnas**. La columna $x$ de la muestra coincide exactamente en la misma coordenada $X$ con la columna $x$ de las filas A, B, C y del resultado. El jugador resuelve el acertijo trazando mentalmente una línea vertical que suma las alturas columna por columna.
+
+---
+
+## F3.2. Aplicación de la Disciplina `interface-design`
 
 ### 1. Intención de Diseño (Working Brief)
-* **El Humano:** Un operador técnico o jugador analítico en una terminal industrial abandonada (*Umbrella Dead Factory*). Enfrenta un puzzle lógico combinatorio bajo tensión. Requiere visibilidad completa e instantánea de causas y efectos sin distracciones ergonómicas ni desplazamientos de página.
-* **El Verbo:** *Calibrar y verificar*. Rotar tres tambores de bloques cíclicos hasta que su suma vertical reproduzca exactamente la onda de referencia y validar mediante la válvula maestra.
-* **La Sensación:** Consola de instrumentación pesada, analógica/digital, precisa, fría y con tacto electromecánico de finales de los años 90 (verde fósforo CRT, biseles de rack industrial, retículas de osciloscopio milimetradas y conmutadores de presión).
+* **El Humano:** Un operador técnico de la corporación Umbrella (o un jugador bajo tensión de supervivencia) frente a una terminal electromecánica de finales de los años 90 en una planta de tratamiento de efluentes abandonada. Necesita diagnosticar y calibrar una muestra química antes de que el sistema active el enclavamiento por sobrepresión o fallos repetidos.
+* **El Verbo:** *Calibrar, alinear y validar*. Desplazar circularmente los tres tambores de frecuencia (A, B, C) hasta que su suma vertical reproduzca de manera idéntica la onda de referencia, confirmando la muestra mediante la válvula maestra de comprobación (*Check / Analizar*).
+* **La Sensación:** Consola industrial pesada, de acero laminado oxidado, remaches, pintura desgastada y baquelita. Iluminación por fósforo verde CRT, diodos LED de alerta ámbar y roja, interruptores mecánicos con clic seco de relé y lecturas analíticas de alta precisión.
 
 ### 2. Exploración del Dominio y Territorio Visual
-* **Conceptos del Dominio (5+):** Espectrometría hídrica, calibración por tambores rotatorios, osciloscopio de doble traza en fase, efluente y sedimentación, válvula de purga de sobrepresión, enclavamiento de seguridad (*interlock*).
-* **Mundo de Color (5+):**
-  1. `--crt-phosphor-primary` (`#00e575` / `#00ff80`): Trazas activas, estado operativo y lecturas de bloques.
-  2. `--crt-phosphor-target` (`#00d4ff` / `#00b8e6`): Tono cian puro reservado exclusivamente para la Muestra de Referencia (inmutable).
-  3. `--chassis-steel` (`#0c1410` base, `#16241c` paneles elevados): Chasis de hierro laminado en frío con micro-textura y biselado.
-  4. `--hazard-alarm` (`#ff3333` fallo, `#ffaa00` advertencia): Diodos LED y alertas de sobrecalentamiento/fallos.
-  5. `--match-resonance` (`#00ffaa` con halo): Resonancia visual cuando una columna coincide con el patrón objetivo.
-* **Firma de Identidad (Signature):** **Retícula de fase continua vertical**. Las 16 columnas del espectro comparten guías visuales milimetradas continuas que atraviesan el objetivo, los tres tambores de calibración y la suma acumulada, reforzando de forma directa el modelo mental de apilamiento vertical verificado en la Fase 2 (H4).
+* **Conceptos del Dominio (6):** Espectrometría hídrica, cápsula de muestreo biológico de efluente, calibración por canales independientes A/B/C, osciloscopio de doble traza en fase, válvula de purga de sobrepresión, enclavamiento de seguridad (*safety interlock*).
+* **Mundo de Color (6 tonos físicos):**
+  1. `--chassis-corrosion` (`#1c241e` base, pátina óxido `#382e24`): Chasis de metal ferroso desgastado por la humedad industrial.
+  2. `--crt-phosphor-grid` (`#004225` retícula, `#00e575` señal activa): Fósforo verde P1 clásico de osciloscopio de tubo de rayos catódicos.
+  3. `--channel-a-red` (`#e63946` / `#ff3b30`): Traza roja de alta advertencia para el Canal A y diodo de fallo/bloqueo.
+  4. `--channel-b-amber` (`#ffb703` / `#ff9900`): Traza ámbar/amarillo industrial para el Canal B y selector de dificultad.
+  5. `--channel-c-cyan` (`#00b4d8` / `#00d4ff`): Traza cian pura para el Canal C y fluido de referencia.
+  6. `--plaque-aluminum` (`#b0bec5` metal, `#cfd8dc` bisel, `#263238` tipografía): Placas de aluminio remachadas con tipografía estarcida atornillada.
+* **Firma de Identidad (Signature):** **La Consola de 5 Canales con Retícula Unificada y Vial Físico**. La integración en un solo cuerpo del tubo de muestra, las placas metálicas con controles adyacentes `[ ◄ ► ]` y las 5 pantallas compartiendo una rejilla continua de 16 columnas en alineación vertical absoluta.
 * **Patrones por Defecto Rechazados:**
-  * *Rechazado 1:* Distribución web genérica de una sola columna infinita con scroll vertical $\rightarrow$ *Alternativa adoptada:* Consola de instrumentación fija a escala de viewport (100vh en escritorio), donde todos los instrumentos y mandos conviven en el campo visual inmediato.
-  * *Rechazado 2:* Botones planos rectangulares con iconos unicode $\rightarrow$ *Alternativa adoptada:* Conmutadores de tambor tipo switch basculante con hendidura táctil, estados `:active` de pulsación física real (`transform: scale(0.96)`) y sonido de relé electromecánico.
-  * *Rechazado 3:* Bloque de instrucciones estático de 300px en la parte superior que desplaza todo el juego $\rightarrow$ *Alternativa adoptada:* Panel de guía abatible / *Drawer* lateral desplegable mediante pulsador de cabecera con aviso diegético ("MANUAL DE OPERACIÓN // DIRECTIVA UMBRELLA").
+  * *Rechazado 1 (Controles desvinculados de las filas):* Poner las pantallas a la izquierda y agrupar todos los botones en una torre lejana a la derecha. $\rightarrow$ *Alternativa adoptada:* Controles `[ ◄ ► ]` de cada fila situados inmediatamente al lado de su propia pantalla (a la izquierda), respetando la ergonomía de la máquina original y reduciendo la distancia mano-ojo a cero.
+  * *Rechazado 2 (Manual estático gigante que genera scroll):* Un bloque de texto de 300px superior o inferior que empuje los instrumentos fuera del viewport. $\rightarrow$ *Alternativa adoptada:* Panel de guía abatible (*Drawer* lateral deslizante o persiana técnica overlay) accionado por un conmutador claro `[ ⚠ DIRECTIVA UMBRELLA ]`, que permite consultar el manual sin ocultar ni desplazar la consola del acertijo.
+  * *Rechazado 3 (Miniaturización indiscriminada o eliminación de elementos):* Achicar los botones a 15px o suprimir telemetría para que "quepa". $\rightarrow$ *Alternativa adoptada:* Presupuesto de píxeles calculado para escritorio (1366×768 y 1080p), con áreas de clic ergonómicas (mínimo 40–44px, norma WCAG) y celdas de columna de 30–38px de ancho, perfectamente legibles.
+
+### 3. Integración de Requisitos Funcionales y Estado del Sistema
+Para sumar "las otras cosas que necesitamos" sin competir visualmente con el acertijo:
+* **Telemetría del Sistema:** El contador de movimientos (`MOVIMIENTOS: [ 014 ]`), el contador de fallos (`FALLOS: [ 02 / 03 ]`) y la luz de estado de validación (`EN OPERACIÓN`, `EVALUANDO`, `CALIBRADO`, `BLOQUEADO`) se agrupan en una bahía de instrumentación lateral complementaria o zócalo de instrumentación que utiliza pantallas numéricas estilo VFD/LED verde fósforo con fuentes monoespaciadas y cifras tabulares (`font-variant-numeric: tabular-nums`).
+* **Acciones Principales:** El botón `[ ▣ ANALIZAR MUESTRA ]` (equivalente al "Check" de la consola física), el botón `[ ⟲ PURGAR SISTEMA ]` (válvula de reinicio/purga tras bloqueo) y el selector/indicador de dificultad (`MÁXIMA DIFICULTAD // 16 COL`) se ubican como mandos industriales de alta presencia física pero claramente jerarquizados por debajo de la consola de calibración.
 
 ---
 
-## F3.2. Propuesta y Comparación de Distribuciones
+## F3.3. Propuesta y Comparación de Distribuciones
+
+Se formulan y comparan dos distribuciones espaciales fundamentadas para escritorio:
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                        CABECERA INDUSTRIAL COMPACTA                    │
-│   [●] TERMINAL 03 — PLANTA DE TRATAMIENTO       [? GUÍA] [DIFICULTAD]  │
-├───────────────────────────────────┬────────────────────────────────────┤
-│         DISTRIBUCIÓN A            │          DISTRIBUCIÓN B            │
-│  "Monitor vs Calibrador (2 Col)"  │ "Rack Unificado + Torre de Mandos" │
-│                                   │                                    │
-│  COLUMNA 1        COLUMNA 2       │  COLUMNA RACK      COLUMNA TORRE   │
-│  (Espectros)      (Calibración)   │  (Señal Vertical)  (Mandos & Tele) │
-│ ┌───────────────┐ ┌─────────────┐ │ ┌────────────────┐ ┌─────────────┐ │
-│ │ MUESTRA REF.  │ │ FILAS A,B,C │ │ │ MUESTRA REF.   │ │ [◀] Fila A [▶]│ │
-│ ├───────────────┤ ├─────────────┤ │ ├────────────────┤ ├─────────────┤ │
-│ │ SUMA EN VIVO  │ │ CONTROLES   │ │ │ FILAS A, B, C  │ │ [◀] Fila B [▶]│ │
-│ ├───────────────┤ ├─────────────┤ │ ├────────────────┤ ├─────────────┤ │
-│ │ TELEMETRÍA    │ │ ACCIONES    │ │ │ SUMA EN VIVO   │ │ [◀] Fila C [▶]│ │
-│ └───────────────┘ └─────────────┘ │ └────────────────┘ ├─────────────┤ │
-│                                   │                    │ TELEMETRÍA  │ │
-│                                   │                    │ [ANALIZAR]  │ │
-│                                   │                    │ [PURGAR]    │ │
-│                                   │                    └─────────────┘ │
-└───────────────────────────────────┴────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                              DISTRIBUCIÓN 1 (HIPÓTESIS INICIAL)                        │
+│                   "Consola de Doble Columna Desacoplada (Monitor vs Calibrador)"       │
+├───────────────────────────────────────────┬────────────────────────────────────────────┤
+│  COLUMNA 1 (Zona Principal / Monitoreo)   │  COLUMNA 2 (Zona de Calibración)           │
+│  ┌──────────────────────────────────────┐ │  ┌───────────────────────────────────────┐ │
+│  │ MUESTRA DE REFERENCIA (Target)       │ │  │ FILAS A, B, C (Gráficos apilados)     │ │
+│  │ [===🧪===] [Pantalla Osciloscopio]   │ │  ├───────────────────────────────────────┤ │
+│  ├──────────────────────────────────────┤ │  │ CONTROLES DE DESPLAZAMIENTO           │ │
+│  │ RESULTADO (Suma de la Combinación)   │ │  │ [◀ Fila A ▶] [◀ Fila B ▶] [◀ Fila C ▶]│ │
+│  ├──────────────────────────────────────┤ │  ├───────────────────────────────────────┤ │
+│  │ ESTADO DEL SISTEMA Y TELEMETRÍA      │ │  │ ACCIONES PRINCIPALES                  │ │
+│  │ [Movimientos] [Fallos] [Estado]      │ │  │ [ ▣ ANALIZAR ]    [ ⟲ PURGAR ]        │ │
+│  └──────────────────────────────────────┘ │  └───────────────────────────────────────┘ │
+└───────────────────────────────────────────┴────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                              DISTRIBUCIÓN 2 (PROPUESTA RECOMENDADA)                    │
+│             "Consola Industrial Fiel a RE3 con Bahía de Operaciones Lateral"           │
+├───────────────────────────────────────────────────────┬────────────────────────────────┤
+│  COLUMNA PRINCIPAL (~70% ancho):                      │  COLUMNA DE OPERACIONES (~30%) │
+│  EL PANEL DE CALIBRACIÓN DE 5 BANDAS                  │  TELEMETRÍA, ACCIONES Y AYUDA  │
+│  ┌──────────────────────────────────────────────────┐ │  ┌───────────────────────────┐ │
+│  │ [SAMPLE]  [=🧪=]  [Pantalla Objetivo]            │ │  │ [? MANUAL DE OPERACIÓN]   │ │
+│  ├──────────────────────────────────────────────────┤ │  ├───────────────────────────┤ │
+│  │ [A ▶] [■] [◄ ►]  [Pantalla Canal A (Rojo)]       │ │  │ TELEMETRÍA DEL SISTEMA    │ │
+│  │ [B ▶] [■] [◄ ►]  [Pantalla Canal B (Ámbar)]      │ │  │ • MOVIMIENTOS: [ 014 ]    │ │
+│  │ [C ▶] [■] [◄ ►]  [Pantalla Canal C (Cian)]       │ │  │ • FALLOS:      [ 02 / 03 ]│ │
+│  ├──────────────────────────────────────────────────┤ │  │ • ESTADO: [ EN OPERACIÓN ]│ │
+│  │ [RESULT]          [Pantalla Resultado]  (●) (●)  │ │  ├───────────────────────────┤ │
+│  │                   (Suma en vivo continua) (LEDs) │ │  │ VÁLVULAS Y ACCIONES       │ │
+│  │                                                  │ │  │ [ ▣ ANALIZAR MUESTRA ]    │ │
+│  │  ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ (16 col)       │ │  │ [ ⟲ PURGAR SISTEMA ]      │ │
+│  │  │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │                │ │  │ [DIFICULTAD: 16 COL]      │ │
+│  └──────────────────────────────────────────────────┘ │  └───────────────────────────┘ │
+└───────────────────────────────────────────────────────┴────────────────────────────────┘
 ```
 
 ---
 
-### Alternativa 1: "Consola Dividida en Dos Columnas (Monitor vs Calibrador)"
+### Alternativa 1: "Consola de Doble Columna Desacoplada (Monitor vs Calibrador)"
 
-Esta alternativa sigue la hipótesis inicial planteada por el requerimiento: divide la pantalla horizontalmente en dos bloques conceptuales de 50%/50% o 55%/45%.
+Esta alternativa toma directamente la **hipótesis inicial planteada en los requerimientos**: divide la pantalla en dos columnas de ancho similar (~50% / 50% o 55% / 45%).
 
 #### Estructura Espacial
-1. **Columna Izquierda (Zona de Monitoreo y Análisis):**
-   * Panel superior: **Muestra de Referencia (Target)** con osciloscopio cian.
-   * Panel central: **Espectro de Suma en Vivo** con trazado verde/rojo según coincidencia.
-   * Panel inferior: **Consola de Telemetría** (Movimientos, Fallos acumulados, Luz de Estado del Sistema).
+1. **Columna Izquierda (Zona Principal / Monitoreo):**
+   * Muestra de referencia (`SAMPLE`) con su gráfico y vial en la parte superior.
+   * Resultado de la combinación (`RESULT` / Suma en vivo) en la parte central, claramente diferenciado.
+   * Estado del sistema al pie de la columna: contador de movimientos, contador de fallos y luz de validación.
 2. **Columna Derecha (Zona de Calibración e Intervención):**
-   * Panel de las **Tres Filas Móviles (A, B y C)** con sus bloques renderizados mediante Canvas.
-   * Controles de desplazamiento horizontal `◀` y `▶` para cada una de las tres filas, posicionados inmediatamente al pie de cada fila o agrupados en un panel dedicado.
-   * Panel de **Acciones Maestras**: Botón `▣ Analizar` (válvula de prueba) y Botón `⟲ Purgar`.
-3. **Ayuda:** Desplegable superior compacto o cajón deslizable lateral con botón "Manual de Operación".
+   * Las tres filas A, B y C agrupadas con sus bloques de colores.
+   * Controles de desplazamiento `[ ◀ ]` y `[ ▶ ]` situados debajo de cada fila o agrupados en un panel inferior.
+   * Acciones principales: botones `[ ▣ Analizar ]` y `[ ⟲ Purgar ]`, y selector de dificultad.
+3. **Ayuda:** Panel plegable superior o pestaña colapsable ("Manual").
 
 #### Ventajas
-* **Separación de roles conceptuales limpia:** Divide con claridad la "lectura pasiva" (izquierda) de la "intervención activa" (derecha).
-* **Amplitud horizontal:** Cada columna dispone de entre 450px y 600px en monitores estándar, otorgando buen espacio para los controles de botones a la derecha.
-* **Control del scroll vertical:** Al no apilar verticalmente los tres osciloscopios y los controles, la altura total se mantiene por debajo de 650px, eliminando completamente el scroll en 1080p y 1366×768.
+* **Cumplimiento estricto de la hipótesis inicial:** Responde punto por punto a la formulación inicial del requerimiento de rediseño.
+* **Gran holgura de altura por pantalla:** Al tener solo 2 osciloscopios en la columna izquierda y las 3 filas en la derecha, cada canvas puede disfrutar de una altura de 120–140px sin rebasar el alto de la ventana.
+* **Separación de conceptos clara:** Separa formalmente el "qué quiero lograr y qué tengo" (izquierda) del "qué estoy manipulando" (derecha).
 
-#### Desventajas
-* **Ruptura de la lectura vertical directa (defecto crítico de UX):** En el acertijo original de *Resident Evil 3*, la clave mental es mirar una columna y ver cómo los bloques de A, B y C se apilan hacia arriba para coincidir con la muestra (Fase 2, H4). Al situar las Filas A, B y C en una columna distinta a la Muestra y a la Suma, el usuario debe realizar constantes movimientos sacádicos horizontales (mirar columna 4 en la derecha, mirar columna 4 en la izquierda, volver a la derecha).
-* **Duplicación de anchos de canvas:** Requiere sincronizar dos anchos de canvas independientes (el de filas a la derecha y los de espectros a la izquierda) para que las 16 columnas tengan escalas similares.
+#### Desventajas Críticas
+* **Ruptura del modelo mental del acertijo (defecto severo de UX):** La clave matemática del puzzle de *Resident Evil 3* es el **apilamiento vertical columna a columna** (Fase 2, H4). Si las filas A, B y C están en la columna derecha y la muestra/resultado están en la columna izquierda, el ojo del jugador debe viajar horizontalmente 50 veces por minuto (mirar columna 4 en la derecha, saltar a la izquierda para ver si suma 3, volver a la derecha para rotar B, saltar de nuevo a la izquierda). La fatiga sacádica resultante destruye la experiencia analítica.
+* **Discordancia total con la máquina original de la foto:** En la imagen de referencia real enviada por el usuario, el panel es un bloque unificado vertical donde cada fila tiene su pantalla en el mismo renglón que sus controles y todas las pantallas comparten la misma cuadrícula. La Alternativa 1 deshace esta coherencia industrial.
+* **Desincronización de escala visual de columnas:** Al estar en dos columnas independientes de anchos dinámicos, las 16 columnas de las filas a la derecha difícilmente tendrán el mismo ancho en píxeles que las 16 columnas de los espectros a la izquierda, arruinando la lectura intuitiva.
 
 ---
 
-### Alternativa 2: "Rack de Señales Unificado con Torre de Mandos Lateral" (Recomendada)
+### Alternativa 2: "Consola Industrial Fiel a RE3 con Bahía de Operaciones Lateral" (Recomendada)
 
-Esta alternativa surge de la síntesis entre la hipótesis de dos columnas y el hallazgo fundamental de la Fase 2: **el apilamiento vertical es la esencia del acertijo**. En lugar de separar las filas de la suma, se coloca **toda la cadena de señales en la columna principal** con una rejilla continua compartida, y se trasladan **todos los controles, telemetría y acciones** a una torre lateral ergonómica.
+Esta alternativa surge de integrar la **referencia visual real enviada por el usuario** con los principios de la skill `interface-design`. Traduce con fidelidad diegética el panel original de *Resident Evil 3* como la pieza central del juego y ubica todos los elementos complementarios del sistema en una bahía de mando lateral ergonómica, respetando una distribución de dos columnas en escritorio (~70% / ~30%).
 
-#### Estructura Espacial (Proporción 65% / 35% en Desktop)
-1. **Columna Principal (El Rack de Señales — Izquierda / Centro, ~65% ancho):**
-   * Se presenta como una bahía de osciloscopios integrada de arriba hacia abajo:
-     1. **Muestra de Referencia (Target):** Traza cian superior (80–90px).
-     2. **Filas de Calibración A, B y C:** Tambores giratorios con señalética A/B/C destacada (180–200px).
-     3. **Espectro de Suma en Vivo:** Trazado de mezcla en tiempo real con silueta tenue del objetivo y barras diferenciales de coincidencia (80–90px).
-   * **Continuidad de Retícula:** Las 16 columnas tienen exactamente el mismo ancho y alineación milimétrica en el eje X a través de los tres visores. El jugador puede bajar la mirada verticalmente en línea recta para sumar mentalmente la columna 7 de A, B y C y constatar el resultado en la suma inmediatamente debajo.
-2. **Columna Lateral (Torre de Mandos e Instrumentación — Derecha, ~35% ancho):**
-   * **Banco de Conmutadores de Fila:** Tres módulos de control (A, B y C) alineados en altura (eje Y) exactamente con las filas gráficas de la bahía de señales. Cada módulo contiene sus dos pulsadores mecánicos industriales `◀` y `▶` con etiqueta de fila.
-   * **Módulo de Válvulas Maestras:**
-     * Botón de alto relieve `▣ ANALIZAR MUESTRA` (botón dominante con luz testigo).
-     * Botón de seguridad `⟲ PURGAR SISTEMA` (diseño de palanca/válvula industrial).
-     * Selector de Dificultad (Máxima 16 Col / Inducción 12 Col) integrado como dial o llave selectora.
-   * **Consola de Telemetría Integrada:** Displays numéricos estilo LED/VFD verde fósforo con fuentes monoespaciadas (`font-variant-numeric: tabular-nums`) para:
-     * Contador de Movimientos.
-     * Contador de Fallos (con alerta visual de 3 intentos máximos).
-     * Luz de Enclavamiento/Estado (EN OPERACIÓN, EVALUANDO, BLOQUEADO, CALIBRADO).
-3. **Módulo de Ayuda Plegable:**
-   * Barra superior con botón toggle `[ ⚠ DIRECTIVA DE OPERACIÓN ]`. Al hacer clic, abre un cajón lateral deslizante (*drawer*) o un panel colapsable que no empuja la interfaz, permitiendo consultar el manual sin perder de vista los instrumentos.
+#### Estructura Espacial en Escritorio
+1. **Columna Principal (Centro-Izquierda, ~68–72% del ancho): El Panel de Calibración Monolítico**
+   * Recrea con exactitud el chasis de la imagen del usuario organizado en 5 bandas horizontales continuas:
+     1. **Banda 1 (`SAMPLE`):**
+        * Placa metálica remachada `SAMPLE`.
+        * Vial/cápsula física de vidrio con el reactivo de agua y menisco de líquido animado.
+        * Testigo LED verde de muestra activa.
+        * Pantalla de osciloscopio CRT con retícula milimetrada verde y ondas escalonadas en blanco/verde brillante.
+     2. **Bandas 2, 3 y 4 (`Canales A, B y C`):**
+        * Placas metálicas identificadoras `[ A ]`, `[ B ]`, `[ C ]` con su color distintivo.
+        * Testigos LED cuadrados de canal activo.
+        * Conmutadores basculantes industriales `[ ◄ ]` y `[ ► ]` táctiles integrados inmediatamente a la izquierda de cada pantalla.
+        * Pantallas individuales de osciloscopio para cada fila, respetando la paleta de la imagen:
+          * **Fila A:** Segmentos en **Rojo** (`#e63946`).
+          * **Fila B:** Segmentos en **Ámbar/Amarillo** (`#ffb703`).
+          * **Fila C:** Segmentos en **Cian/Azul** (`#00b4d8`).
+     3. **Banda 5 (`RESULT`):**
+        * Placa metálica remachada `RESULT`.
+        * Pantalla de osciloscopio que despliega la suma combinada en tiempo real (con feedback sutil de coincidencia columna a columna).
+        * Indicadores luminosos en el extremo derecho (LED rojo de enclavamiento/fallos y LED verde de calibración exitosa).
+   * **Continuidad de Retícula Absoluta:** Las 16 columnas de SAMPLE, A, B, C y RESULT tienen **exactamente el mismo ancho en píxeles** y están alineadas al 100 % en el eje X. El usuario puede seguir visualmente una columna desde SAMPLE hacia abajo, sumando A + B + C y comprobando RESULT sin ninguna desviación.
+2. **Columna Lateral (Derecha, ~28–32% del ancho): Bahía de Operaciones, Telemetría y Soporte**
+   * **Módulo Superior de Ayuda:** Botón basculante con luz testigo `[ ⚠ MANUAL DE OPERACIÓN ]`. Al pulsarlo, despliega un *drawer* lateral deslizante o persiana modal técnica con las directivas de Umbrella y reglas del juego, flotando sin desplazar ni achicar la consola de calibración.
+   * **Módulo Central de Telemetría (Displays VFD / LED verde fósforo):**
+     * `MOVIMIENTOS: [ 014 ]` (cifras tabulares `tabular-nums`).
+     * `FALLOS: [ 02 / 03 ]` con diodos luminosos de advertencia de enclavamiento inminente.
+     * `ESTADO DEL SISTEMA: [ EN OPERACIÓN ]` (conmuta dinámicamente a `EVALUANDO`, `CALIBRADO` o `BLOQUEADO`).
+   * **Módulo Inferior de Acciones Maestras:**
+     * Gran pulsador industrial `[ ▣ ANALIZAR MUESTRA ]` (el botón "Check" de la consola, con bisel de alto relieve y respuesta física `:active`).
+     * Pulsador de seguridad `[ ⟲ PURGAR SISTEMA ]` (válvula de despresurización para desbloquear tras 3 fallos o reiniciar).
+     * Selector / Insignia de dificultad técnica (`MÁXIMA DIFICULTAD // 16 COL`) integrado como dial selector o llave técnica.
 
-#### Ventajas
-* **Alineación cognitiva perfecta (100% fiel al modelo mental H4):** El jugador nunca pierde la relación columna por columna. La lectura vertical de A + B + C = Suma vs Referencia se realiza de forma natural y sin esfuerzo visual.
-* **Ergonomía de control lateral:** Al estar los mandos agrupados a la derecha, la mano y la vista se complementan: la mano acciona los botones de la torre mientras los ojos se concentran en el movimiento de las ondas en el rack de señales.
-* **Cero scroll vertical en cualquier resolución objetivo:**
-  * En una pantalla de 1366×768 (viewport útil de ~660px):
-    * Cabecera compacta: 42px.
-    * Rack central (Target 85px + Filas 190px + Suma 85px + separadores y márgenes 60px): ~420px.
-    * Espacio total requerido: ~520px, dejando más de 140px de margen libre sin ningún tipo de scroll.
-* **Escalabilidad y responsividad elegante:** En resoluciones de escritorio se despliega en 2 columnas (65/35). En pantallas móviles o tablets estrechas (< 768px), la cuadrícula CSS conmuta automáticamente a una sola columna ordenada (Rack arriba, Controles abajo) de manera fluida.
+#### Ventajas Determinantes
+* **Alineación cognitiva perfecta (100 % fiel al modelo mental H4):** El jugador suma columnas en vertical sin fatiga sacádica. La relación causa-efecto entre rotar una fila y ver variar el resultado es instantánea e intuitiva.
+* **Fidelidad y resonancia con la referencia del usuario:** Cumple directamente con la estética, disposición y cromatismo del panel original de *Resident Evil 3* que el usuario envió como expectativa visual.
+* **Ergonomía de mandos adyacentes:** Los botones `[ ◄ ► ]` están directamente al lado de su propia fila A, B o C. La mano interactúa con el botón correspondiente mientras la vista confirma el desplazamiento del gráfico en el mismo renglón.
+* **Cero interferencia visual:** La telemetría, el manual y las acciones principales están en la columna lateral derecha, funcionando como la "consola de soporte" del operador sin restarle protagonismo al acertijo.
+* **Cero scroll vertical en cualquier resolución estándar:** Rigurosamente demostrado mediante el presupuesto de píxeles calculado a continuación.
 
-#### Desventajas
-* Requiere un diseño de rejilla CSS más riguroso para asegurar que los conmutadores de las filas A, B y C mantengan correspondencia de altura precisa con las bandas del canvas central.
+#### Desventajas y Mitigación
+* *Desventaja:* Requiere un diseño de cuadrícula CSS riguroso para sincronizar el ancho de las pantallas y sus subpaneles de control.  
+  *Mitigación:* Se implementa con CSS Grid de dos columnas en el contenedor principal y un sub-grid de alineación fija (`grid-template-columns: 140px 1fr`) en la columna del panel, garantizando correspondencia pixel-perfect entre controles y canvas.
 
 ---
 
-## F3.3. Matriz Comparativa de Distribuciones
+## F3.4. Presupuesto de Píxeles (Pixel Budget) — Demostración de Cero Scroll Vertical
 
-| Criterio de Evaluación | Distribución A (Split 2-Col: Espectros / Calibrador) | Distribución B (Rack de Señales + Torre de Mandos) |
+Uno de los requerimientos más estrictos es que **los elementos principales deben permanecer visibles simultáneamente en escritorio sin scroll vertical** en las resoluciones objetivo:
+* **Resolución Compacta:** 1366 × 768 px (altura útil en navegador con pestañas y barra de tareas: **~640–660 px**).
+* **Resolución Estándar:** 1920 × 1080 px (altura útil en navegador: **~920–960 px**).
+
+### Desglose de Altura en Píxeles para la Alternativa 2 (Resolución 1366×768):
+
+| Elemento de la Interfaz | Altura Asignada | Justificación Ergonómica y Técnica |
+| :--- | :---: | :--- |
+| **Cabecera de Terminal (Header industrial)** | 36 px | Logotipo de la terminal, título técnico y botón de ayuda. |
+| **Margen / Espaciador superior** | 10 px | Separación modular en la retícula de 4/8px. |
+| **Banda 1: `SAMPLE` (Vial + Pantalla Muestra)** | 70 px | Canvas de 56px de altura + 14px de marcos y bordes biselados. |
+| **Separador entre secciones** | 4 px | Canaleta metálica de separación estructural. |
+| **Banda 2: Canal A (Rojo + `[ ◄ ► ]`)** | 52 px | Canvas de 38px + botones táctiles de 38px de alto (WCAG). |
+| **Banda 3: Canal B (Ámbar + `[ ◄ ► ]`)** | 52 px | Idéntico a Canal A. |
+| **Banda 4: Canal C (Cian + `[ ◄ ► ]`)** | 52 px | Idéntico a Canal A y B. |
+| **Separador entre secciones** | 4 px | Canaleta metálica de separación estructural. |
+| **Banda 5: `RESULT` (Pantalla Suma + LEDs)** | 70 px | Canvas de 56px de altura + 14px de marcos e indicadores. |
+| **Margen / Espaciador inferior** | 14 px | Remate inferior del chasis metálico. |
+| **ALTURA TOTAL DEL PANEL PRINCIPAL** | **364 px** | **Ocupa únicamente el 56% del viewport disponible de 650px.** |
+| **Contenedor exterior con marco y paddings** | **~480–510 px** | **Deja entre 130px y 160px de margen libre sin ningún scroll.** |
+
+### Verificación del Ancho de Columna (Legibilidad Óptima sin Miniaturización):
+* En un monitor de 1366px, la columna principal dispone de ~850px de ancho.
+* Descontando 140px para las placas de rotulación y botones `[ ◄ ► ]`, el canvas de osciloscopio mide **~700px de ancho**.
+* Cada una de las 16 columnas del espectro mide:
+  $$\text{Ancho de columna} = \frac{700\text{ px}}{16} \approx 43.7\text{ px}$$
+* Un ancho de casi 44px por columna permite una legibilidad extraordinaria: las alturas discretas 0 a 4 se aprecian con holgura, los segmentos de bloque son nítidos y no existe compresión alguna.
+* En 1080p (ancho ~1200px para el panel), cada columna mide más de 60px.
+* **Conclusión matemática:** Se garantiza **0 scroll vertical** sin reducir ningún elemento a tamaños diminutos y sin eliminar ninguna funcionalidad del juego.
+
+---
+
+## F3.5. Matriz Comparativa Exhaustiva de Distribuciones
+
+| Criterio de Evaluación | Alternativa 1: Doble Columna Desacoplada (Monitor vs Calibrador) | Alternativa 2: Consola Fiel a RE3 con Bahía Lateral (Recomendada) |
 | :--- | :---: | :---: |
-| **Legibilidad y Apilamiento Vertical (H4)** | ❌ Deficiente (rompe el eje visual vertical entre filas y suma) | ⭐ **Excelente** (eje X idéntico y compartido) |
-| **Eliminación de Scroll Vertical (< 680px)** | ✅ Sí (ambas columnas son compactas) | ✅ **Sí** (altura total ~520px) |
-| **Ergonomía y Agrupación de Controles** | ⚠ Regular (controles flotando bajo las filas) | ⭐ **Excelente** (torre dedicada con alineación Y) |
-| **Integración de Telemetría y Estado** | ⚠ Regular (repartida en la columna izquierda) | ✅ **Óptima** (agrupada en la consola de mando) |
-| **Acceso a Ayuda sin Desplazamiento** | ✅ Sí (mediante drawer/panel abatible) | ✅ **Sí** (drawer lateral o persiana modal) |
-| **Conservación de Componentes Existentes** | ✅ 100% conservados | ✅ **100% conservados** |
-| **Adaptabilidad Responsiva Móvil** | ⚠ Salto abrupto de dos columnas a una | ⭐ **Natural** (pila continua ya coherente) |
+| **1. Fidelidad a la Referencia Visual del Usuario** | ❌ **Baja**: Desarma el panel de la máquina original en dos mitades separadas. | ⭐ **Máxima**: Recrea con exactitud la consola de 5 bandas horizontales de la imagen. |
+| **2. Legibilidad del Acertijo y Apilamiento Vertical (H4)** | ❌ **Deficiente**: Obliga a realizar constantes saltos de mirada de derecha a izquierda. | ⭐ **Excelente**: Alineación vertical milimétrica continua entre Sample, A, B, C y Result. |
+| **3. Ergonomía de Controles de Desplazamiento** | ⚠ **Regular**: Controles alejados de las pantallas de resultado. | ⭐ **Excelente**: Botones `[ ◄ ► ]` adyacentes a cada canal, reduciendo la distancia mano-ojo a 0. |
+| **4. Cero Scroll Vertical en Pantallas Estándar (< 660px)** | ✅ **Sí**: Altura contenida (~490px). | ⭐ **Sí**: Altura contenida y calculada (~500px, 140px libres en 768p). |
+| **5. Diferenciación Cromática de Canales (Foto RE3)** | ⚠ **Parcial**: Requiere coordinar dos columnas distintas. | ⭐ **Exacta**: Fila A Roja, Fila B Ámbar, Fila C Cian, Sample Blanco/Verde, Result Verde. |
+| **6. Integración de Telemetría sin Competir con el Acertijo** | ⚠ **Regular**: Compite con los osciloscopios en la columna izquierda. | ⭐ **Óptima**: Concentrada en la bahía lateral derecha con displays VFD dedicados. |
+| **7. Acceso a Ayuda sin Romper el Espacio de Juego** | ⚠ **Variable**: Si se abre hacia abajo desplaza la pantalla. | ⭐ **Óptima**: *Drawer* deslizante o persiana overlay que flota sin mover el juego. |
+| **8. Preservación Funcional (Cero Pérdida de Elementos)** | ✅ **100 % conservados**. | ⭐ **100 % conservados** (Movimientos, Fallos, Estado, Analizar, Purgar, Dificultad). |
 
 ---
 
-## F3.4. Recomendación Final Fundamentada
+## F3.6. Recomendación Final Fundamentada
 
-**Se recomienda formalmente la Alternativa 2: "Rack de Señales Unificado con Torre de Mandos Lateral".**
+**Se recomienda formalmente adoptar la Alternativa 2: "Consola Industrial Fiel a RE3 con Bahía de Operaciones Lateral".**
 
-**Razones determinantes:**
-1. **Prioridad del Acertijo:** El desafío matemático consiste en sumar mentalmente los bloques de una misma columna. Separar las filas de los espectros (como propone la Alternativa 1) introduce una barrera cognitiva innecesaria. La Alternativa 2 preserva la alineación milimétrica columna a columna.
-2. **Eficiencia del Espacio:** Las pantallas modernas de escritorio son panorámicas (16:9 o 16:10). La Alternativa 2 aprovecha el ancho para ubicar a la derecha la torre de controles y telemetría, logrando que el juego entero funcione en un lienzo industrial unificado de **0 scroll vertical**.
-3. **Identidad Temática (*Umbrella Terminal*):** Emula con gran precisión un rack de instrumentación de laboratorio de control biológico de 1999, con pantalla de osciloscopio en el cuerpo principal y consola de potenciómetros/switches en el panel de control lateral.
+### Justificación de la Elección:
+1. **Alineación con la Expectativa Visual del Usuario:** La imagen enviada por el usuario establece con total claridad la visión del proyecto: una máquina diegética que evoca la consola original de *Resident Evil 3: Nemesis*, con el vial de muestra a la izquierda de `SAMPLE`, los mandos `[ ◄ ► ]` alineados a cada fila A, B, C, la diferenciación por color (rojo, ámbar, cian) y la pantalla de `RESULT` al pie. La Alternativa 2 materializa exactamente esta expectativa sin concesiones.
+2. **Superioridad Cognitiva y Ergonómica:** El acertijo es un problema de suma vertical. Mantener las 5 bandas compartiendo el mismo eje X y la misma escala milimétrica en una columna unificada permite al jugador entender instantáneamente cómo cada desplazamiento de fila impacta la combinación final. Desacoplar las filas de la suma (como hace la Alternativa 1) introduce una fricción visual innecesaria que devalúa el juego.
+3. **Distribución Óptima de Pantallas Panorámicas (16:9 y 16:10):** El 90 % de los monitores de escritorio modernos son apaisados. Dedicar el 70 % del ancho al panel de calibración de alta legibilidad y el 30 % restante a la torre de operaciones, telemetría y ayuda aprovecha armónicamente la pantalla, logrando una consola compacta de **~500px de alto con 0 scroll vertical**.
+4. **Preservación Inviolable de la Arquitectura y Código:** La Alternativa 2 no altera ningún contrato de dominio, respetando estrictamente las invariantes congeladas en la Fase 5 y permitiendo abordar la Fase 4 (Identidad Visual) y la Fase 6 (Maquetación Responsiva Definitiva) sobre una base de diseño sólida, validada y documentada.
 
 
 ---
@@ -647,20 +758,55 @@ Se establece una arquitectura de color estricta basada en la **regla 60-30-10** 
 ---
 ---
 
-# Registro de Implementación de la Fase 4: Identidad Visual
+# Fase 4: Identidad Visual — Registro de Implementación
 
 **Fecha de ejecución:** 20 de Octubre de 2026  
-**Archivos modificados:**
-1. `src/ui/styles/terminal-crt.css`: Tokens semánticos industriales, botones de 38–44px, feedback `:active: scale(0.97)`, `tabular-nums` en telemetría y scanlines atenuadas.
-2. `src/structural/decorators/BaseBlockView.ts`: Celdas con segmentación interna de niveles discretos (0 a 4) y bordes nítidos.
-3. `src/ui/components/TargetDisplayView.ts`: Muestra de referencia como protagonista visual superior en cian analítico (`#00d4ff`) con retícula milimetrada horizontal de 4 niveles y cresta iluminada.
-4. `src/ui/components/RowCarouselView.ts`: Placas de canal metálicas `[ A ]`, `[ B ]`, `[ C ]` con LED indicador, carriles divisores y marco estarcido de enclavamiento para el estado `LOCKED`.
-5. `src/ui/components/LiveSumSpectrumView.ts`: Silueta fantasma del objetivo en cian tenue, barras de suma activas en verde fósforo si coinciden y en rojo técnico si discrepan, con contador dinámico `COINCIDENCIA: X/16 COL`.
+**Estado:** ✅ Completada y verificada.  
+**Alternativa seleccionada:** Alternativa 2 — *Consola Industrial Fiel a RE3 con Bahía de Operaciones Lateral* (aprobada en la Fase 3).
 
-### Verificación de Calidad y Pruebas:
-* **Suite de Pruebas (Vitest):** **75 tests pasados (8 suites, 100% éxito)**.
-* **Verificación de Tipos (TypeScript):** **0 errores (`tsc --noEmit`)**.
-* **Compilación de Producción (Vite):** **Build exitoso sin alertas**.
+---
+
+## F4.1. Archivos Modificados
+
+| # | Archivo | Tipo de Cambio | Descripción |
+| :--- | :--- | :--- | :--- |
+| 1 | `index.html` | **Reestructurado** | Distribución en dos columnas: Panel de Calibración de 3 bandas (SAMPLE → Filas A/B/C → RESULT) + Bahía de Operaciones lateral (manual plegable, telemetría, acciones). Controles de desplazamiento ◀ ▶ adyacentes a cada canal en la zona izquierda de la banda unificada de filas. |
+| 2 | `src/ui/styles/terminal-crt.css` | **Modularizado** | Tokens semánticos industriales (`--industrial-*`, `--channel-a/b/c-*`), reset global, scanlines suaves, brillo CRT radial y animación de parpadeo. Se extrajeron los estilos de componente a `layout.css`. |
+| 3 | `src/ui/styles/layout.css` | **Reescrito** | Cuadrícula CSS Grid de 2 columnas (`1fr 240px`), bandas horizontales con placas metálicas rotuladas, viales de muestra, LEDs indicadores por canal, bahía lateral con módulos de telemetría y acciones, overlay de victoria, responsive para móvil (< 768px) y pantallas compactas (< 700px alto). |
+| 4 | `src/index.ts` | **Adaptado** | Toggle de instrucciones actualizado al nuevo marcado (chevron rotativo `#help-chevron` en vez de texto). Sin cambios en la lógica de ensamblado de Canvas, controlador o dominio. |
+| 5 | `src/ui/components/TargetDisplayView.ts` | **Refinado** | Muestra de referencia en cian analítico (`#00d4ff`) con retícula milimétrica de 4 niveles numerados, cresta luminosa superior y etiquetas diegéticas industriales. |
+| 6 | `src/ui/components/RowCarouselView.ts` | **Rediseñado** | Codificación de color por canal fiel a la referencia RE3: Canal A en rojo bermellón (`#e63946`), Canal B en ámbar dorado (`#ffb703`), Canal C en cian celeste (`#00b4d8`). Franjas de identidad de canal como fondo tenue, tinte de canal superpuesto sobre los bloques base, cresta luminosa en color de canal y diodo LED del color correspondiente. |
+| 7 | `src/ui/components/LiveSumSpectrumView.ts` | **Refinado** | Indicadores de discrepancia direccional (▲/▼) que señalan si la suma de cada columna está por encima o por debajo del objetivo, además de la silueta fantasma del objetivo y las barras reactivas en verde fósforo / rojo técnico. |
+
+---
+
+## F4.2. Decisiones de Diseño
+
+1. **Canvas unificado para las 3 filas:** Se mantuvo `#rows-canvas` como un solo lienzo (en vez de 3 individuales) para preservar el contrato DOM de la Fase 5 (`ui-integration.test.ts` espera `#rows-canvas`). La diferenciación visual por canal se logra mediante tinte por superposición (`globalAlpha: 0.35`) y cresta coloreada, sin romper la cadena Decorator existente (`BaseBlockView → HighlightPeakDecorator → ScanlineGlitchDecorator`).
+2. **Controles en la zona lateral del canvas:** Los botones ◀ ▶ de cada fila se agrupan en `band__channel-group` junto a la placa y el LED de cada canal, apilados verticalmente al lado izquierdo del canvas de filas, cumpliendo el requisito de "controles adyacentes a su fila" de la Alternativa 2.
+3. **Bahía de operaciones lateral:** Módulos de ayuda plegable (comienza colapsado, `aria-expanded="false"`), telemetría compacta (movimientos + fallos en cuadrícula 2×1 + indicador de estado) y válvulas de acción con la insignia de máxima dificultad.
+4. **Paleta 60-30-10:** 60% verde fósforo base (`#00ff73`), 30% cian analítico (`#00d4ff`) para la muestra de referencia y estados de éxito, 10% acentos de canal (rojo/ámbar/cian) y señales de alarma (rojo técnico `#ff3b30`, ámbar de precaución `#ff9900`).
+5. **Invariante I9 preservada:** El texto del `#difficulty-badge` se mantiene exactamente como `"MÁXIMA DIFICULTAD (16 COLUMNAS)"`.
+
+---
+
+## F4.3. Verificación de Calidad
+
+| Control | Resultado |
+| :--- | :---: |
+| Suite de Pruebas (Vitest) | **94 tests / 9 suites — 100% ✅** |
+| Verificación de Tipos (`tsc --noEmit`) | **0 errores ✅** |
+| Build de Producción (`vite build`) | **Éxito sin alertas ✅** |
+| Diff en `src/core` + `src/creational` | **Vacío (sin cambios en lógica) ✅** |
+| Dependencias runtime | **0 ✅** |
+
+Comandos reproducibles:
+```powershell
+npm test
+npm run typecheck
+npm run build
+git diff --stat f9577c1 -- src/core src/creational
+```
 
 ---
 ---
@@ -797,3 +943,65 @@ Checklist obligatorio antes de cada cambio futuro:
 ## F5.7. Conclusión
 
 La Fase 5 queda **cerrada y activa de forma permanente**. La auditoría demuestra que el rediseño visual de la Fase 4 **no alteró el núcleo** y que las reglas del acertijo están ahora blindadas por **19 verificaciones nuevas** (94 en total). Cualquier regresión futura en matemática, desplazamientos, muestra objetivo, validación, telemetría o dificultad real se detectará automáticamente antes de llegar al navegador.
+
+---
+
+# Actualización: Aumento de Dificultad, Cronómetro de 15 Minutos y Enclavamiento 3D con Sirena Estroboscópica
+
+**Fecha de ejecución:** 20 de Octubre de 2026  
+**Estado:** ✅ Completado y verificado (105 tests aprobados / 0 errores de tipos / Build exitoso)
+
+---
+
+## 1. Objetivos del Requerimiento
+
+1. **Aumento de Dificultad y Misterio en el Espectro de Suma (`RESULT`):**
+   - Eliminar el feedback cromático individual por columna (barras verdes para aciertos y rojas para fallos) y las flechas direccionales (▲/▼) que facilitaban en exceso la resolución.
+   - Unificar las barras de la suma en vivo al mismo color azul cian analítico de la muestra de referencia (`SAMPLE`), aportando mayor intriga e inmersión diegética.
+   - Conservar el indicador superior `COINCIDENCIA: X/16 COL` para mantener la orientación global del progreso sin delatar qué columnas específicas coinciden.
+2. **Cronómetro Regresivo de 15 Minutos:**
+   - Incorporar un temporizador regresivo de 15:00 minutos (`900 segundos`) de contención hidráulica.
+   - Presentarlo en un módulo industrial dedicado en la Bahía de Operaciones con reloj digital CRT, barra de progreso y micro-estados visuales (`normal` > 3 min, `warning` ≤ 3 min ámbar, `critical` ≤ 1 min rojo pulsante).
+   - Pausar automáticamente al resolver (`SOLVED`), detenerse en bloqueo (`LOCKED`), y reiniciar a 15:00 al accionar la purga (`RESET`) o iniciar una nueva muestra.
+   - Disparar el enclavamiento de seguridad si el tiempo llega a `00:00`.
+3. **Máximo de 3 Intentos de Análisis Visible:**
+   - Mantener la regla ya establecida de 3 fallos consecutivos máximos.
+   - Hacerlo explícito visualmente en el panel de telemetría: `Fallos (Máx 3): X / 3`.
+4. **Enclavamiento de Seguridad Comprensible a Pantalla Completa con Luz Intermitente y Animación 3D:**
+   - Eliminar el aviso pequeño y críptico sobre el canvas.
+   - Implementar un modal de pantalla completa (`#lockdown-overlay`) con cobertura total del viewport.
+   - Luz de emergencia estroboscópica intermitente (`emergencySirenStrobe`): efecto de baliza/sirena roja de alarma industrial que pulsa rítmicamente sobre toda la pantalla.
+   - Animación y profundidad espacial 3D (`lockdownEntrance3D`): entrada con perspectiva tridimensional, rotación en los ejes X e Y, prisma holográfico basculante 3D (`badgeTilt3D`), bordes metálicos biselados y franjas de peligro (*hazard stripes*).
+   - Redacción clara y comprensible: explica la contingencia (3 intentos fallidos o tiempo agotado), la razón técnica de contención y proporciona la instrucción exacta de recuperación.
+   - Botón directo de purga y desbloqueo integrado en la alerta (`#btn-lockdown-purge`), permitiendo recuperar la terminal con un solo clic.
+
+---
+
+## 2. Componentes y Modificaciones Realizadas
+
+| Archivo | Tipo | Descripción |
+| :--- | :--- | :--- |
+| `src/ui/components/LiveSumSpectrumView.ts` | **Refactor visual** | Barras de suma en cian analítico idéntico a SAMPLE (`rgba(0, 212, 255, 0.82)`), eliminación de colores verde/rojo y flechas ▲/▼; preservación del contador de coincidencia `X/16 COL`. |
+| `src/ui/components/RowCarouselView.ts` | **Refactor visual** | Reducción del bloqueo en canvas a un velo industrial discreto, delegando la notificación principal al overlay 3D. |
+| `src/application/CountdownTimer.ts` | **Nuevo módulo** | Lógica pura del cronómetro de 15 minutos: cuenta regresiva, formateo `MM:SS`, callbacks `onTick`/`onExpire`, pausado y reseteo sin dependencias de DOM ni runtime. |
+| `src/ui/components/TimerDisplayView.ts` | **Nuevo componente** | Observador concreto (`IPuzzleObserver`) que sincroniza el temporizador con los estados del puzzle y actualiza reloj, barra y clases de urgencia. |
+| `src/ui/components/LockdownOverlayView.ts` | **Nuevo componente** | Observador concreto (`IPuzzleObserver`) que gestiona la activación del modal 3D a pantalla completa, la razón dinámica (intentos vs tiempo) y el botón de purga. |
+| `src/core/models/WaterSamplePuzzle.ts` | **Ampliación core** | Adición del método limpio `triggerLock()` para contingencia por expiración de tiempo, emitiendo `PuzzleEventType.LOCKED`. |
+| `index.html` | **Marcado DOM** | Módulo de cronómetro de contención, telemetría con límite `/ 3`, actualización del manual y estructura del modal 3D `#lockdown-overlay`. |
+| `src/ui/styles/layout.css` | **Estilos CSS** | Reglas de diseño del cronómetro (estados normal/warning/critical), luz estroboscópica de sirena roja intermitente y animación 3D del modal. |
+| `src/index.ts` | **Ensamblado** | Inyección e inicialización de `TimerDisplayView` y `LockdownOverlayView`, destrucción limpia de timers previos y conexión de purga. |
+| `tests/unit/timer-and-lockdown.test.ts` | **Nueva suite** | 9 pruebas unitarias que validan el cronómetro, formateo, expiración, overlay de enclavamiento, `triggerLock()` y micro-estados. |
+| `tests/unit/ui-integration.test.ts` | **Suite ampliada** | +2 pruebas de integración DOM (9 en total) que verifican la presencia del temporizador, la activación del overlay al 3er fallo y el desbloqueo mediante purga. |
+
+---
+
+## 3. Matriz de Verificación y Puertas de Calidad
+
+| Control | Comando | Resultado |
+| :--- | :--- | :---: |
+| Suite completa de pruebas (Vitest) | `npm test` | **105 tests aprobados / 10 archivos (100%) ✅** |
+| Verificación de tipos TypeScript | `npm run typecheck` | **0 errores (`tsc --noEmit`) ✅** |
+| Compilación de producción | `npm run build` | **Build exitoso sin advertencias ✅** |
+| Auditoría de dependencias | `npm audit` | **0 vulnerabilidades ✅** |
+| Dependencias en runtime | `package.json` | **0 dependencias (100% nativo) ✅** |
+

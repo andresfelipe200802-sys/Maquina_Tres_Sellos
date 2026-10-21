@@ -7,6 +7,9 @@ import type { TargetPattern } from '../../core/models/TargetPattern';
  * Dibuja en un elemento canvas el vector de alturas de la muestra de referencia.
  * Escucha notificaciones del puzzle pero solo repinta cuando el estado cambia
  * (p.ej. al resolver el puzzle, el objetivo puede mostrarse en otro color).
+ *
+ * Fase 4: protagonismo visual cian analítico (#00d4ff) con retícula milimétrica
+ * de 4 niveles discretos, cresta luminosa superior y etiquetas diegéticas.
  */
 export class TargetDisplayView implements IPuzzleObserver {
   private readonly canvas: HTMLCanvasElement;
@@ -56,6 +59,11 @@ export class TargetDisplayView implements IPuzzleObserver {
       ctx.moveTo(0, lineY);
       ctx.lineTo(canvas.width, lineY);
       ctx.stroke();
+
+      // Marcas numéricas de nivel en el margen izquierdo
+      ctx.fillStyle = 'rgba(0, 212, 255, 0.25)';
+      ctx.font = '8px monospace';
+      ctx.fillText(`${level}`, 3, lineY - 2);
     }
 
     // Guías verticales de columnas

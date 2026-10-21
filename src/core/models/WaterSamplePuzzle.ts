@@ -185,6 +185,15 @@ export class WaterSamplePuzzle implements IPuzzleSubject {
   }
 
   /**
+   * Bloquea el puzzle por contingencia externa (p. ej. expiración del cronómetro de 15 minutos).
+   */
+  public triggerLock(): void {
+    this.consecutiveFailures = this.maxConsecutiveFailures;
+    this.setState(new LockedState());
+    this.emit(PuzzleEventType.LOCKED);
+  }
+
+  /**
    * Selecciona el estado resultante. La regla de "sobrecalentamiento" es una
    * politica de intentos, no una fase hardcodeada: el comportamiento sigue
    * residiendo en las clases de estado.

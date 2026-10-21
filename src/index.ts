@@ -38,6 +38,9 @@ import { SoundManager } from './application/SoundManager';
 
 import type { WaterSamplePuzzle } from './core/models/WaterSamplePuzzle';
 
+import { LockdownOverlayView } from './ui/components/LockdownOverlayView';
+import { TimerDisplayView } from './ui/components/TimerDisplayView';
+
 const DEFAULT_DIFFICULTY = 'hard';
 
 // --- Selector de fabrica por tabla (sin bifurcaciones) ---
@@ -62,6 +65,7 @@ function $canvas(selector: string): HTMLCanvasElement {
 // --- Variables de aplicacion ---
 let puzzle: WaterSamplePuzzle;
 let controller: GameController | null = null;
+let timerView: TimerDisplayView | null = null;
 
 /**
  * Registra los listeners sobre elementos que NO se recrean (selector de
@@ -80,22 +84,29 @@ function wireGlobalControls(): void {
     bootstrap(selector?.value ?? DEFAULT_DIFFICULTY);
   });
 
+  const lockdownPurgeBtn = document.querySelector<HTMLButtonElement>('#btn-lockdown-purge');
+  lockdownPurgeBtn?.addEventListener('click', () => {
+    puzzle?.reset();
+  });
+
   const toggleInstructionsBtn = document.querySelector<HTMLButtonElement>('#btn-toggle-instructions');
   const instructionsBody = document.querySelector<HTMLElement>('#instructions-content');
   toggleInstructionsBtn?.addEventListener('click', () => {
     const isCollapsed = instructionsBody?.classList.toggle('instructions__body--collapsed');
     toggleInstructionsBtn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
-    const toggleIcon = toggleInstructionsBtn.querySelector('.toggle-icon');
-    const toggleText = toggleInstructionsBtn.querySelector('.toggle-text');
-    if (toggleIcon) toggleIcon.textContent = isCollapsed ? '▼' : '▲';
-    if (toggleText) toggleText.textContent = isCollapsed ? 'Ver Guía' : 'Ocultar Guía';
+    const chevron = document.querySelector<HTMLElement>('#help-chevron');
+    if (chevron) {
+      chevron.classList.toggle('ops-bay__help-chevron--open', !isCollapsed);
+    }
   });
 }
 
 function bootstrap(difficulty: string): void {
-  // Liberar el controlador anterior antes de reemplazar el puzzle.
+  // Liberar el controlador y temporizador anteriores antes de reemplazar el puzzle.
   controller?.unbindControls();
   controller = null;
+  timerView?.destroy();
+  timerView = null;
 
   const factory = FACTORY_MAP[difficulty] ?? FACTORY_MAP[DEFAULT_DIFFICULTY];
   puzzle = factory.createPuzzle();
@@ -122,12 +133,27 @@ function bootstrap(difficulty: string): void {
     $('#move-counter'),
     $('#fail-counter'),
   );
+  const lockdownOverlay = new LockdownOverlayView($('#lockdown-overlay'), puzzle);
   const soundManager = new SoundManager();
+
+  const timerDisplay = document.querySelector<HTMLElement>('#timer-display');
+  if (timerDisplay) {
+    timerView = new TimerDisplayView({
+      displayElement: timerDisplay,
+      fillElement: document.querySelector<HTMLElement>('#timer-progress'),
+      clockContainer: document.querySelector<HTMLElement>('#timer-clock'),
+      puzzle,
+      lockdownView: lockdownOverlay,
+      durationSeconds: 15 * 60, // 15 minutos reglamentarios
+    });
+    puzzle.attach(timerView);
+  }
 
   puzzle.attach(targetView);
   puzzle.attach(rowCarousel);
   puzzle.attach(liveSum);
   puzzle.attach(attemptCounter);
+  puzzle.attach(lockdownOverlay);
   puzzle.attach(soundManager);
   attachSolvedOverlay(puzzle);
 

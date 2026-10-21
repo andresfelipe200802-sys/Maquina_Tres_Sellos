@@ -1,11 +1,19 @@
 import type { IPuzzleObserver, PuzzleEventType } from '../../core/observer/IPuzzleObserver';
 
 /**
- * Observador concreto: espectro de suma acumulada en vivo (Patron Observer).
+ * Observador concreto: espectro de suma acumulada en vivo (Patrón Observer).
  *
  * Dibuja un histograma en tiempo real con la suma columna a columna de las
- * tres filas del puzzle. Cada vez que el sujeto emite una notificacion,
- * este observador repinta el espectro sin consultar al dominio directamente.
+ * tres filas del puzzle.
+ *
+ * Aumento de Dificultad e Identidad Visual (Misterio):
+ * - Las barras de la suma se dibujan en el mismo color azul cian analítico
+ *   de la muestra de referencia (SAMPLE), eliminando la señalización por colores
+ *   verde/rojo y las flechas direccionales que revelaban individualmente qué
+ *   columna coincidía.
+ * - Se mantiene el contador global de coincidencia ("COINCIDENCIA: X/16 COL"),
+ *   obligando al operador a deducir visualmente las discrepancias.
+ * - Al alcanzar SOLVED, todo el espectro se ilumina en cian/esmeralda triunfal.
  */
 export class LiveSumSpectrumView implements IPuzzleObserver {
   private readonly canvas: HTMLCanvasElement;
@@ -48,7 +56,7 @@ export class LiveSumSpectrumView implements IPuzzleObserver {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Retícula analógica horizontal de niveles de suma
-    ctx.strokeStyle = 'rgba(0, 255, 115, 0.08)';
+    ctx.strokeStyle = 'rgba(0, 212, 255, 0.08)';
     ctx.lineWidth = 1;
     for (let level = 1; level <= 4; level++) {
       const lineY = canvas.height - (level / 4) * usableHeight;
@@ -59,7 +67,7 @@ export class LiveSumSpectrumView implements IPuzzleObserver {
     }
 
     // Guías verticales de columnas
-    ctx.strokeStyle = 'rgba(0, 255, 115, 0.04)';
+    ctx.strokeStyle = 'rgba(0, 212, 255, 0.04)';
     for (let col = 0; col <= columns; col++) {
       const lineX = col * columnWidth;
       ctx.beginPath();
@@ -75,10 +83,10 @@ export class LiveSumSpectrumView implements IPuzzleObserver {
       const x = i * columnWidth;
       const y = canvas.height - barHeight;
 
-      ctx.fillStyle = 'rgba(0, 212, 255, 0.12)';
+      ctx.fillStyle = 'rgba(0, 212, 255, 0.10)';
       ctx.fillRect(x + 2, y, columnWidth - 4, barHeight);
 
-      ctx.strokeStyle = 'rgba(0, 212, 255, 0.25)';
+      ctx.strokeStyle = 'rgba(0, 212, 255, 0.22)';
       ctx.strokeRect(x + 2.5, y + 0.5, columnWidth - 5, barHeight - 1);
     });
 
@@ -96,42 +104,42 @@ export class LiveSumSpectrumView implements IPuzzleObserver {
       const x = i * columnWidth;
       const y = canvas.height - barHeight;
 
+      // Color monocromático misterioso idéntico a SAMPLE (azul cian analítico)
+      // Sin delatar con verde o rojo cada columna individual.
       if (isSolved) {
         ctx.fillStyle = 'rgba(0, 255, 200, 0.95)';
-      } else if (matches) {
-        ctx.fillStyle = 'rgba(0, 255, 115, 0.85)';
       } else {
-        ctx.fillStyle = 'rgba(255, 59, 48, 0.75)';
+        ctx.fillStyle = 'rgba(0, 212, 255, 0.82)';
       }
 
       ctx.fillRect(x + 4, y, columnWidth - 8, barHeight);
 
-      // Borde superior de cresta (fósforo verde o rojo alarma)
+      // Borde superior de cresta (cian luminoso como SAMPLE)
       if (isSolved) {
         ctx.fillStyle = '#80ffe5';
-      } else if (matches) {
-        ctx.fillStyle = '#00ffaa';
       } else {
-        ctx.fillStyle = '#ff3b30';
+        ctx.fillStyle = '#80e5ff';
       }
       ctx.fillRect(x + 4, y, columnWidth - 8, 2.5);
 
-      // Borde de celda
-      ctx.strokeStyle = matches ? 'rgba(0, 255, 115, 0.35)' : 'rgba(255, 59, 48, 0.35)';
+      // Borde de celda uniforme
+      ctx.strokeStyle = isSolved
+        ? 'rgba(0, 255, 200, 0.45)'
+        : 'rgba(0, 212, 255, 0.35)';
       ctx.strokeRect(x + 4.5, y + 0.5, columnWidth - 9, barHeight - 1);
     });
 
-    // Etiqueta técnica
-    ctx.fillStyle = isSolved ? '#00ffcc' : '#00ff73';
+    // Etiqueta técnica diegética
+    ctx.fillStyle = isSolved ? '#00ffcc' : '#00d4ff';
     ctx.font = 'bold 10px monospace';
     ctx.fillText('ESPECTRO DE SUMA EN VIVO // CANAL Σ [MEZCLA]', 8, 13);
 
-    // Contador de coincidencia de columnas
+    // Contador de coincidencia de columnas (preservado para dar feedback global de progreso)
     ctx.fillStyle = isSolved
       ? '#00ffcc'
       : matchCount === columns
         ? '#00ff73'
-        : 'rgba(0, 255, 115, 0.6)';
+        : 'rgba(0, 212, 255, 0.85)';
     ctx.font = '9px monospace';
     ctx.textAlign = 'right';
     ctx.fillText(`COINCIDENCIA: ${matchCount}/${columns} COL`, canvas.width - 8, 13);

@@ -85,6 +85,9 @@ describe('Integracion UI (index.html + index.ts)', () => {
       '#btn-a-right',
       '#btn-validate',
       '#btn-reset',
+      '#timer-display',
+      '#lockdown-overlay',
+      '#btn-lockdown-purge',
     ]) {
       expect(document.querySelector(id), `Falta ${id} en index.html`).not.toBeNull();
     }
@@ -92,6 +95,10 @@ describe('Integracion UI (index.html + index.ts)', () => {
 
   it('arranca el sistema en MANIPULATING (EN OPERACIÓN) tras energizar', () => {
     expect(text('#state-indicator')).toBe('EN OPERACIÓN');
+  });
+
+  it('el cronómetro de contención arranca con 15 minutos (15:00)', () => {
+    expect(text('#timer-display')).toBe('15:00');
   });
 
   it('el boton shift-right rota la fila y actualiza el contador de movimientos', () => {
@@ -117,6 +124,26 @@ describe('Integracion UI (index.html + index.ts)', () => {
     document.querySelector<HTMLButtonElement>('#btn-validate')?.click();
     expect(text('#fail-counter')).toBe('1');
     expect(text('#state-indicator')).toBe('EN OPERACIÓN');
+  });
+
+  it('al tercer análisis fallido se activa el overlay de enclavamiento a pantalla completa y purgar lo desbloquea', () => {
+    const validateBtn = document.querySelector<HTMLButtonElement>('#btn-validate');
+    const lockdownOverlay = document.querySelector<HTMLElement>('#lockdown-overlay');
+    const purgeBtn = document.querySelector<HTMLButtonElement>('#btn-lockdown-purge');
+
+    // Ya tiene 1 fallo del test anterior: agregamos 2 fallos más
+    validateBtn?.click();
+    validateBtn?.click();
+
+    expect(text('#fail-counter')).toBe('3');
+    expect(text('#state-indicator')).toBe('BLOQUEADO');
+    expect(lockdownOverlay?.classList.contains('lockdown-overlay--visible')).toBe(true);
+
+    // Accionar la purga desde el overlay de enclavamiento
+    purgeBtn?.click();
+    expect(text('#fail-counter')).toBe('0');
+    expect(text('#state-indicator')).toBe('EN OPERACIÓN');
+    expect(lockdownOverlay?.classList.contains('lockdown-overlay--visible')).toBe(false);
   });
 
   it('mantiene fijo el control de Máxima Dificultad (insignia visible y selector bloqueado)', () => {
