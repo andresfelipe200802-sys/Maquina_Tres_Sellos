@@ -1005,3 +1005,271 @@ La Fase 5 queda **cerrada y activa de forma permanente**. La auditoría demuestr
 | Auditoría de dependencias | `npm audit` | **0 vulnerabilidades ✅** |
 | Dependencias en runtime | `package.json` | **0 dependencias (100% nativo) ✅** |
 
+---
+
+# Fase 6. Capa de control de aula SENA (modo online)
+
+**Fecha de ejecución:** 24 de Octubre de 2026
+**Estado:** Implementado y verificado (frontend 105/105, servidor 9/9, build y auditorías en verde).
+
+---
+
+## 6.1. Alcance
+
+Se añadió una capa de control de aula sobre el acertijo existente, sin tocar su lógica de juego:
+
+- El **frontend** sigue siendo estático y publicable en GitHub Pages.
+- El **backend** es un servicio Node/TypeScript independiente (Express + WebSocket + MySQL opcional).
+- Si `VITE_API_URL` no está definida, la aplicación conserva el **modo local** original.
+- La interfaz nueva está en español y no introduce dependencias de ejecución en el frontend.
+- `src/core/` continúa libre de APIs del navegador.
+
+La Fase 5 se mantiene intacta: no se modificaron matrices, offsets, longitudes, suma, generación del objetivo, validación exacta, límite de 3 fallos, transiciones del puzzle, purga ni telemetría del juego. Todo el trabajo nuevo es de aplicación, transporte y presentación.
+
+---
+
+## 6.2. Reglas de sala implementadas
+
+### Estados de ronda
+
+| Estado | Significado | Ingresos |
+| :--- | :--- | :--- |
+| `ABIERTA` | Sala creada y visible para aprendices. | Permitidos |
+| `EN_JUEGO` | Reloj autoritativo en marcha. | Cerrados |
+| `CONGELADA` | Mandos bloqueados; el reloj no avanza. | Cerrados |
+| `FINALIZADA` | Ronda cerrada; se habilita crear otra. | Cerrados |
+
+### Estados de aprendiz
+
+`EN_ESPERA`, `JUGANDO`, `CALIBRADO`, `BLOQUEADO`, `DESCONECTADO`, `EXPULSADO`.
+
+### Reglas aplicadas en servidor
+
+- Máximo **45** aprendices por ronda, con validación de cupo en almacenamiento.
+- Identidad solo por nombre visible; **sin duplicados** normalizando acentos, mayúsculas, espacios y signos.
+- Solo se puede ingresar mientras la ronda está `ABIERTA`; al iniciar se cierran los ingresos.
+- Una salida de más de **10 segundos** bloquea el puesto hasta una ronda nueva.
+- Un aprendiz expulsado no puede reingresar en la misma ronda, incluso si reconecta.
+- Solo puede existir **una ronda activa**; el instructor debe finalizarla antes de crear otra.
+- El plazo es autoritativo del servidor (`deadlineAt`), no del reloj del navegador.
+- Congelar pausa el plazo; reanudar lo extiende exactamente por el tiempo congelado.
+- La purga del puzzle **no reinicia** el reloj de la ronda online.
+- Al agotarse el tiempo, el servidor finaliza la ronda y bloquea a quienes no calibraron.
+
+### Telemetría
+
+La telemetría de movimientos, fallos, coincidencias y tiempo restante es **formativa y reportada por el cliente**. Se sanea y se acota en el servidor, pero no se usa como calificación definitiva ni como árbitro de la lógica del acertijo.
+
+---
+
+## 6.3. Arquitectura online
+
+```text
+GitHub Pages (estático)                 Servicio Node/TS
+┌─────────────────────────┐   HTTPS    ┌──────────────────────────┐
+│ Aprendiz (index.html)   │ ─────────► │ REST /api/*              │
+│ Instructor (/instructor)│ ◄────────► │ WebSocket /ws            │
+└─────────────────────────┘    WSS     │ RoundService + Hub       │
+                                       │ MemoryStore | MySqlStore │
+                                       └──────────────────────────┘
+```
+
+- **Instructor:** token Bearer opaco en memoria de la pestaña; sin cookies ni CSRF.
+- **Aprendiz:** token efímero en `sessionStorage`; se envía en REST y en el primer mensaje WebSocket.
+- El token WebSocket **no viaja en la URL**, evitando filtrarlo en logs.
+- La URL WebSocket se deriva de `VITE_API_URL` (`http` → `ws`, `https` → `wss`).
+- El canal WebSocket autentica en el primer mensaje, con caducidad de 10 segundos para autenticarse.
+- Los snapshots del instructor se agrupan con debounce para no saturar el navegador.
+
+### Endpoints principales
+
+| Método | Ruta | Uso |
+| :--- | :--- | :--- |
+| `GET` | `/health` | Salud y tipo de almacenamiento |
+| `GET` | `/api/round` | Estado público de la ronda activa |
+| `POST` | `/api/players/join` | Ingreso por nombre |
+| `GET` | `/api/players/me` | Estado del aprendiz autenticado |
+| `POST` | `/api/instructor/login` | Login del instructor |
+| `POST` | `/api/instructor/logout` | Revocación de sesión |
+| `GET` | `/api/instructor/me` | Dashboard y jugadores |
+| `POST` | `/api/instructor/rounds` | Crear ronda |
+| `POST` | `/api/instructor/rounds/:id/start` | Iniciar ronda |
+| `POST` | `/api/instructor/rounds/:id/freeze` | Congelar/reanudar |
+| `POST` | `/api/instructor/rounds/:id/finish` | Finalizar ronda |
+| `POST` | `/api/instructor/players/:id/kick` | Expulsar aprendiz |
+| `WS` | `/ws` | Snapshots, estado de ronda, telemetría y expulsión |
+
+---
+
+## 6.4. Archivos añadidos y modificados
+
+### Frontend
+
+| Archivo | Tipo | Cambio |
+| :--- | :--- | :--- |
+| `src/online/config.ts` | Nuevo | URL del API, derivación de WebSocket y claves de sesión. |
+| `src/online/protocol.ts` | Nuevo | Tipos compartidos de rondas, jugadores y mensajes WebSocket. |
+| `src/online/ApiClient.ts` | Nuevo | Cliente REST con Bearer, errores tipados y timeout. |
+| `src/online/LearnerSession.ts` | Nuevo | Ingreso, reconexión, telemetría, cierre de ronda y expulsión. |
+| `src/online/InstructorSession.ts` | Nuevo | Login, acciones de ronda, snapshots y cierre de sesión. |
+| `src/ui/components/AccessGateView.ts` | Nuevo | Terminal de acceso con validación y estado de sala. |
+| `src/ui/components/WaitingRoomView.ts` | Nuevo | Sala de espera con nombre, cupo y código. |
+| `src/ui/components/FreezeOverlayView.ts` | Nuevo | Bloqueo visual durante la congelación global. |
+| `src/ui/components/SessionEndView.ts` | Nuevo | Cierre por expulsión, bloqueo o ronda finalizada. |
+| `src/ui/components/OnlineStatusView.ts` | Nuevo | Insignia de conexión online en la cabecera. |
+| `src/ui/components/TimerDisplayView.ts` | Modificado | Acepta `deadlineAt` y congelación externos; ya no reinicia el reloj online al purgar. |
+| `src/ui/styles/online.css` | Nuevo | Acceso, espera, congelación, cierre y estados responsive. |
+| `src/ui/styles/layout.css` | Modificado | Consola de escritorio ajustada al viewport para eliminar el scroll vertical. |
+| `src/index.ts` | Modificado | Composición local/online, overlays, telemetría y reconexión. |
+| `index.html` | Modificado | Puerta de acceso, espera, congelación, fin de sesión e insignia online. |
+| `instructor/index.html` | Nuevo | Login y dashboard del instructor. |
+| `instructor/main.ts` | Nuevo | Matriz 9×5, acciones, reloj, snapshots y toasts. |
+| `instructor/dashboard.css` | Nuevo | Dirección visual «estación de control» responsive. |
+| `vite.config.ts` | Modificado | Build multipágina y `base: './'` para GitHub Pages. |
+| `vitest.config.ts` | Nuevo | Exclusión de pruebas del servidor del runner del frontend. |
+
+### Backend
+
+| Archivo | Tipo | Cambio |
+| :--- | :--- | :--- |
+| `server/src/types.ts` | Nuevo | Modelo de instructores, rondas, jugadores y eventos. |
+| `server/src/config.ts` | Nuevo | Configuración y validación de producción. |
+| `server/src/security.ts` | Nuevo | Tokens opacos, hashing SHA-256, Argon2id y nombres normalizados. |
+| `server/src/errors.ts` | Nuevo | Errores de aplicación con códigos estables. |
+| `server/src/RoundService.ts` | Nuevo | Reglas de ronda, cupo, nombres, congelación, expulsión, bloqueo y telemetría. |
+| `server/src/Hub.ts` | Nuevo | WebSocket autenticado, snapshots, heartbeat y broadcasts. |
+| `server/src/app.ts` | Nuevo | REST, CORS, Helmet, rate limits y manejo de errores. |
+| `server/src/index.ts` | Nuevo | Arranque, almacenamiento, ticker y cierre ordenado. |
+| `server/src/store/Store.ts` | Nuevo | Contrato de persistencia. |
+| `server/src/store/MemoryStore.ts` | Nuevo | Implementación en memoria para desarrollo/pruebas. |
+| `server/src/store/MySqlStore.ts` | Nuevo | Persistencia MySQL 8 con transacciones y bloqueo de cupo. |
+| `database/schema.sql` | Nuevo | Esquema, índices y notas de mínimo privilegio. |
+| `server/tests/round-service.test.ts` | Nuevo | 8 pruebas de reglas de ronda y seguridad. |
+| `server/tests/e2e.test.ts` | Nuevo | Ciclo HTTP + WebSocket con 45 aprendices. |
+| `server/package.json`, `server/tsconfig.json` | Nuevos | Proyecto y scripts del backend. |
+
+### Despliegue y documentación
+
+| Archivo | Cambio |
+| :--- | :--- |
+| `.github/workflows/pages.yml` | Publicación del frontend en GitHub Pages, inyectando `VITE_API_URL`. |
+| `.env.example` | Variables del frontend. |
+| `server/.env.example` | Variables del backend, credenciales, CORS, MySQL y tiempos. |
+| `package.json` | Scripts `dev:server`, `test:server`, `typecheck:server`, `build:all`. |
+| `CAMBIOS_REDISEÑO.md` | Este registro. |
+
+---
+
+## 6.5. Seguridad aplicada
+
+- Contraseñas con **Argon2id**; el servidor nunca guarda la contraseña en claro.
+- Tokens de sesión opacos de 32 bytes; solo se persiste su **hash SHA-256**.
+- Autenticación Bearer, sin cookies: no hay CSRF de sesión.
+- CORS con lista exacta de orígenes; el `Origin` del WebSocket también se valida.
+- Helmet activo, `x-powered-by` desactivado y cuerpo JSON limitado a 16 KB.
+- Rate limits: 3.000 req/min global, 120 ingresos/min por IP para aulas con NAT y 10 logins/15 min.
+- Validación de nombre de 2 a 40 caracteres, admite letras, acentos, dígitos posteriores, espacios, punto, guion y apóstrofo.
+- Cupo de 45 y unicidad de nombre garantizados en el almacenamiento, no solo en el navegador.
+- MySQL parametrizado; el ingreso usa transacción y `FOR UPDATE` para evitar sobrecupo concurrente.
+- En producción se exigen `INSTRUCTOR_USER` e `INSTRUCTOR_PASSWORD`; no se usan credenciales por defecto.
+- El servidor debe publicarse detrás de **HTTPS/WSS**; los tokens no deben circular por HTTP en producción.
+
+---
+
+## 6.6. Despliegue
+
+### Frontend en GitHub Pages
+
+1. Subir el repositorio a GitHub.
+2. En **Settings → Pages**, elegir **GitHub Actions** como fuente.
+3. En **Settings → Secrets and variables → Actions → Variables**, crear `VITE_API_URL` con la URL HTTPS del backend, sin barra final.
+4. Hacer push a `main`: `.github/workflows/pages.yml` compila y publica `dist/`.
+5. El aprendiz entra a la raíz publicada; el instructor, a `/instructor/`.
+
+`base: './'` permite publicar tanto en la raíz como en una subruta del repositorio. Si el backend cambia de dominio, hay que volver a ejecutar el workflow para reconstruir el frontend.
+
+### Backend en un servicio Node
+
+```bash
+npm ci
+npm --prefix server ci
+cp server/.env.example server/.env   # completar credenciales y CORS
+npm --prefix server run build
+npm --prefix server start
+```
+
+- Configurar `CLIENT_ORIGINS` con el origen exacto de GitHub Pages (por ejemplo, `https://usuario.github.io`).
+- Sin `DATABASE_URL`, el backend funciona en memoria y pierde el estado al reiniciar.
+- Con MySQL 8, importar `database/schema.sql` y definir `DATABASE_URL`; usar `DB_SSL=true` si el proveedor lo exige.
+- El servicio debe exponer HTTP para REST y permitir el upgrade WebSocket en `/ws`.
+
+### Ejecución local verificada
+
+```bash
+# Terminal 1: backend
+npm run dev:server
+
+# Terminal 2: frontend con API
+# Crear un .env en la raíz con VITE_API_URL=http://localhost:3001
+npm run dev
+```
+
+Credenciales de desarrollo por defecto: `instructor / SENA2026*`. No deben usarse en producción.
+
+---
+
+## 6.7. Interfaz y comportamiento verificado
+
+- **Terminal de acceso:** nombre, cupo, código de sala, estado de apertura y mensajes de error.
+- **Sala de espera:** identidad, cupo, código y aviso de bloqueo por ausencia.
+- **Juego:** insignia online, reloj autoritativo, pausa por congelación y cierre por expulsión.
+- **Dashboard:** matriz de 45 puestos (9×5), reloj, ocupación, acciones, telemetría y conexión.
+- **Diseño:** dirección «estación de control de sala limpia», tanque de presión animado, cian/fósforo/ámbar/rojo y 3D contenido.
+- **Escritorio:** a 1366×768 tanto el juego como el dashboard miden exactamente `768 px` de alto; sin scroll vertical. La matriz completa y el panel RESULT quedan visibles.
+- **Corrección aplicada:** tras el login, el dashboard vuelve a renderizar al liberar `busy`, habilitando «Nueva ronda» sin depender de un snapshot posterior.
+- **Favicon:** icono SVG embebido para evitar el 404 de `/favicon.ico` en ambas páginas.
+
+---
+
+## 6.8. Matriz de verificación final
+
+| Control | Comando | Resultado |
+| :--- | :--- | :---: |
+| Tipos frontend | `npm run typecheck` | **0 errores** |
+| Pruebas frontend | `npm test` | **105/105 en 10 archivos** |
+| Build frontend | `npm run build` | **45 módulos, multipágina, sin errores** |
+| Tipos backend | `npm --prefix server run typecheck` | **0 errores** |
+| Pruebas backend | `npm --prefix server test` | **9/9** |
+| Build backend | `npm --prefix server run build` | **Sin errores** |
+| Auditoría frontend | `npm audit --omit=dev` | **0 vulnerabilidades** |
+| Auditoría backend | `npm --prefix server audit --omit=dev` | **0 vulnerabilidades** |
+| E2E navegador real | Chrome headless + Playwright Core | **Flujo completo aprobado** |
+
+### Flujo E2E ejecutado
+
+1. Login del instructor y apertura del dashboard.
+2. Creación de ronda y lectura del código.
+3. Ingreso del aprendiz y sala de espera.
+4. Inicio de ronda y visualización del juego.
+5. Congelación: el reloj permaneció en `14:58` durante la pausa.
+6. Reanudación: reloj y controles volvieron a operar.
+7. Expulsión: el aprendiz recibió «ACCESO RETIRADO».
+8. Verificación de 45 tarjetas, `scrollHeight = 768` en juego y dashboard, y **cero errores de consola**.
+
+---
+
+## 6.9. Límites y pendientes de infraestructura
+
+- **No se publicó el sitio ni el backend:** el entorno no dispone de URL de repositorio GitHub, credenciales de Pages, hosting Node ni instancia MySQL. La configuración queda lista para hacerlo.
+- La URL real de GitHub Pages no se conoce; por eso se usa `base: './'` y se documenta la variable `VITE_API_URL` en lugar de fijar dominios.
+- El almacén en memoria es solo para desarrollo; en producción debe usarse MySQL y backups.
+- La telemetría es reportada por el cliente y no sustituye una evaluación formal.
+- La identidad por nombre y token es adecuada para control de aula, no para autenticación de alta seguridad.
+- El árbol de trabajo contiene cambios sin commit; no se hizo push ni despliegue.
+
+---
+
+## 6.10. No regresión de la Fase 5
+
+Se reejecutaron todas las puertas de calidad existentes después de integrar la capa online. El núcleo del acertijo, sus pruebas de invariantes y el comportamiento local siguen intactos. La nueva capa solo añade estados de aplicación, transporte, control de acceso y presentación alrededor del juego.
+

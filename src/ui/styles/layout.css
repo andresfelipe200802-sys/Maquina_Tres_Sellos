@@ -1070,6 +1070,51 @@
   }
 }
 
+/* --- Escritorio: la consola ocupa exactamente el viewport ---
+ * Las pistas de la cuadrícula sustituyen el alto intrínseco de los canvas,
+ * que de otro modo empujaba RESULT fuera de pantalla a 1366×768.
+ * En pantallas estrechas se conserva el flujo vertical con scroll. */
+@media (min-width: 769px) and (min-height: 500px) {
+  .console {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .console__body {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .calibration-panel {
+    display: grid;
+    grid-template-rows: minmax(64px, 1fr) minmax(180px, 2.6fr) minmax(64px, 1fr);
+    min-height: 0;
+  }
+
+  .band {
+    min-height: 0;
+  }
+
+  .band__screen {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .band__screen canvas,
+  .band__screen--rows canvas {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .ops-bay {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
 /* --- Pantallas compactas: ajustes para 1366×768 --- */
 @media (max-height: 700px) {
   .console {

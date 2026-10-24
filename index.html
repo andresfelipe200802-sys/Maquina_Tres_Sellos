@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Sintetizador de Calibración de Muestra de Agua - Acertijo industrial inspirado en Resident Evil 3." />
   <title>Sintetizador de Calibración de Muestra de Agua</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23030805'/%3E%3Cpath d='M16 4c4.5 6.8 8.5 11 8.5 16a8.5 8.5 0 0 1-17 0C7.5 15 11.5 10.8 16 4z' fill='%2300d4ff'/%3E%3C/svg%3E" />
 </head>
 <body>
   <div class="console" id="console-root">
@@ -15,7 +16,13 @@
         <span class="console__led console__led--green"></span>
         <h1 class="console__title">Sintetizador de Tratamiento de Agua</h1>
       </div>
-      <p class="console__subtitle">Planta de Tratamiento de Agua de Raccoon City — Terminal 03</p>
+      <div class="console__header-right">
+        <p class="console__subtitle">Planta de Tratamiento de Agua de Raccoon City — Terminal 03</p>
+        <div class="online-badge" id="online-badge" hidden>
+          <span class="online-badge__dot" aria-hidden="true"></span>
+          <span id="online-badge-text">CONECTANDO</span>
+        </div>
+      </div>
     </header>
 
     <!-- ═══ CUERPO PRINCIPAL: DOS COLUMNAS ═══ -->
@@ -231,6 +238,143 @@
       <div class="lockdown-overlay__footer">
         <span>DIVISIÓN QUÍMICA DE RACCOON CITY // PROTOCOLO DE SEGURIDAD UMBRELLA-03</span>
       </div>
+    </div>
+  </div>
+
+  <!-- ═══ ACCESO A LA SALA (MODO ONLINE) ═══ -->
+  <section class="access-gate" id="access-gate" hidden aria-labelledby="gate-title">
+    <div class="access-gate__ambient" aria-hidden="true">
+      <div class="access-gate__pipe access-gate__pipe--left"></div>
+      <div class="access-gate__tank">
+        <div class="access-gate__tank-glass">
+          <div class="access-gate__tank-liquid"></div>
+          <div class="access-gate__tank-bubbles">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <div class="access-gate__tank-scale">
+            <span>45</span><span>30</span><span>15</span><span>0</span>
+          </div>
+        </div>
+        <div class="access-gate__tank-base"></div>
+        <span class="access-gate__tank-label">CONTENCIÓN · H₂O</span>
+      </div>
+      <div class="access-gate__pipe access-gate__pipe--right"></div>
+    </div>
+
+    <div class="access-gate__panel">
+      <div class="access-gate__eyebrow">
+        <span class="access-gate__led" aria-hidden="true"></span>
+        SENA · CONTROL DE SALA
+      </div>
+      <h2 class="access-gate__title" id="gate-title">Terminal de acceso</h2>
+      <p class="access-gate__lead">
+        Identifícate para ocupar uno de los 45 puestos de calibración. El instructor
+        abrirá la ronda cuando el grupo esté completo.
+      </p>
+
+      <div class="access-gate__meta">
+        <span id="gate-room-code">SALA · SIN ASIGNAR</span>
+        <span id="gate-capacity">0 / 45 PUESTOS</span>
+      </div>
+
+      <form class="access-gate__form" id="gate-form" autocomplete="off">
+        <label class="access-gate__label" for="gate-name">Nombre del aprendiz</label>
+        <input
+          class="access-gate__input"
+          id="gate-name"
+          name="name"
+          type="text"
+          maxlength="40"
+          minlength="2"
+          placeholder="NOMBRE Y APELLIDO"
+          aria-describedby="gate-status"
+          required
+        />
+        <button class="access-gate__submit" id="gate-submit" type="submit">
+          SOLICITAR ACCESO
+        </button>
+      </form>
+
+      <p class="access-gate__status" id="gate-status" role="status" data-tone="neutral">
+        Consultando el estado de la sala…
+      </p>
+      <button class="access-gate__refresh" id="gate-refresh" type="button">
+        ACTUALIZAR SALA
+      </button>
+
+      <p class="access-gate__privacy">
+        Solo se almacena tu nombre visible durante la ronda. No se solicitan datos
+        personales adicionales.
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══ SALA DE ESPERA (MODO ONLINE) ═══ -->
+  <section class="waiting-room" id="waiting-room" hidden aria-labelledby="waiting-title">
+    <div class="waiting-room__panel">
+      <div class="waiting-room__gauge" aria-hidden="true">
+        <div class="waiting-room__gauge-ring"></div>
+        <div class="waiting-room__gauge-needle"></div>
+        <span class="waiting-room__gauge-label">PRESIÓN<br />ESTABLE</span>
+      </div>
+      <div class="waiting-room__copy">
+        <span class="waiting-room__eyebrow">ACCESO CONCEDIDO</span>
+        <h2 class="waiting-room__title" id="waiting-title">Sala de espera</h2>
+        <p class="waiting-room__name" id="waiting-name">—</p>
+        <div class="waiting-room__data">
+          <span>SALA <strong id="waiting-code">—</strong></span>
+          <span>PUESTOS <strong id="waiting-count">0 / 45</strong></span>
+        </div>
+        <p class="waiting-room__status" id="waiting-status" role="status">
+          Esperando la señal de inicio del instructor
+        </p>
+        <div class="waiting-room__pulse" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+        <p class="waiting-room__note">
+          Mantén esta pestaña abierta. Si sales más de 10 segundos, tu puesto se
+          bloqueará hasta la próxima ronda.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ CONGELAMIENTO GLOBAL ═══ -->
+  <div class="freeze-overlay" id="freeze-overlay" hidden role="alertdialog" aria-modal="true" aria-labelledby="freeze-title">
+    <div class="freeze-overlay__frost" aria-hidden="true"></div>
+    <div class="freeze-overlay__panel">
+      <div class="freeze-overlay__ring" aria-hidden="true">
+        <span>❄</span>
+      </div>
+      <span class="freeze-overlay__eyebrow">BLOQUEO TEMPORAL DE MANDOS</span>
+      <h2 class="freeze-overlay__title" id="freeze-title">Simulación congelada</h2>
+      <p class="freeze-overlay__message">
+        El instructor pausó la ronda. El cronómetro de contención no avanza.
+        Conserva la calibración actual; los mandos se reactivarán automáticamente.
+      </p>
+      <div class="freeze-overlay__bars" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="freeze-overlay__footer">ESPERANDO REANUDACIÓN DEL INSTRUCTOR</div>
+    </div>
+  </div>
+
+  <!-- ═══ FIN DE SESIÓN (EXPULSIÓN / BLOQUEO / RONDA FINALIZADA) ═══ -->
+  <div class="session-end" id="session-overlay" hidden role="alertdialog" aria-modal="true" aria-labelledby="session-title">
+    <div class="session-end__panel" data-kind="kicked">
+      <div class="session-end__icon" id="session-icon" aria-hidden="true">⛔</div>
+      <span class="session-end__eyebrow">CONTROL DE SALA</span>
+      <h2 class="session-end__title" id="session-title">Acceso retirado</h2>
+      <p class="session-end__message" id="session-message">
+        El instructor retiró tu acceso a esta ronda.
+      </p>
+      <button class="session-end__action" id="session-action" type="button">
+        COMPROBAR NUEVA RONDA
+      </button>
+      <p class="session-end__note">
+        La autorización de esta sesión quedó anulada. Podrás ingresar nuevamente
+        cuando el instructor abra otra ronda.
+      </p>
     </div>
   </div>
 

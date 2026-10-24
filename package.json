@@ -11,7 +11,11 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "dev:server": "npm --prefix server run dev",
+    "test:server": "npm --prefix server test",
+    "typecheck:server": "npm --prefix server run typecheck",
+    "build:all": "npm run build && npm --prefix server run build"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

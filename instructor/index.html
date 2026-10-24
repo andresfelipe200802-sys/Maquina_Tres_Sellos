@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Panel de control del instructor para el Sintetizador de Muestra de Agua — SENA." />
+  <title>Control de Sala · SENA</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23030805'/%3E%3Cpath d='M16 4c4.5 6.8 8.5 11 8.5 16a8.5 8.5 0 0 1-17 0C7.5 15 11.5 10.8 16 4z' fill='%2300d4ff'/%3E%3C/svg%3E" />
+</head>
+<body class="dashboard-body">
+
+  <!-- ═══ ACCESO DEL INSTRUCTOR ═══ -->
+  <main class="login-screen" id="login-screen">
+    <section class="login-screen__visual" aria-hidden="true">
+      <div class="login-screen__grid"></div>
+      <div class="login-screen__stack">
+        <div class="login-screen__valve login-screen__valve--top">
+          <span></span><span></span><span></span>
+        </div>
+        <div class="login-screen__core">
+          <div class="login-screen__core-ring"></div>
+          <div class="login-screen__core-ring login-screen__core-ring--inner"></div>
+          <div class="login-screen__core-label">H₂O<br /><small>CONTROL</small></div>
+        </div>
+        <div class="login-screen__readout">
+          <span>PRESIÓN</span><strong>1.013 bar</strong>
+          <span>CAUDAL</span><strong>45 puestos</strong>
+          <span>PROTOCOLO</span><strong>SENA-03</strong>
+        </div>
+      </div>
+      <p class="login-screen__caption">PLANTA DE TRATAMIENTO // SALA DE INSTRUCCIÓN</p>
+    </section>
+
+    <section class="login-screen__panel" aria-labelledby="login-title">
+      <div class="login-screen__eyebrow">
+        <span class="login-screen__led"></span>
+        ACCESO RESTRINGIDO
+      </div>
+      <h1 class="login-screen__title" id="login-title">Puesto de<br />control</h1>
+      <p class="login-screen__lead">
+        Autoriza la ronda, observa los 45 puestos en tiempo real y aplica
+        contención cuando sea necesario.
+      </p>
+
+      <form class="login-form" id="login-form" autocomplete="off">
+        <label class="login-form__label" for="login-user">Usuario instructor</label>
+        <input class="login-form__input" id="login-user" name="username" type="text" maxlength="80" required />
+        <label class="login-form__label" for="login-password">Clave de acceso</label>
+        <input class="login-form__input" id="login-password" name="password" type="password" maxlength="200" required />
+        <button class="login-form__submit" id="login-submit" type="submit">AUTORIZAR SESIÓN</button>
+      </form>
+
+      <p class="login-form__status" id="login-status" role="status"></p>
+      <p class="login-screen__note">
+        La sesión vive solo en esta pestaña. Al recargar deberás autorizar de nuevo.
+      </p>
+    </section>
+  </main>
+
+  <!-- ═══ PANEL DE CONTROL ═══ -->
+  <div class="dashboard" id="dashboard-screen" hidden>
+    <header class="dash-header">
+      <div class="dash-header__brand">
+        <span class="dash-header__mark" aria-hidden="true"></span>
+        <div>
+          <h1>SALA DE CALIBRACIÓN</h1>
+          <p>SENA · CONTROL DE INSTRUCCIÓN</p>
+        </div>
+      </div>
+      <div class="dash-header__meta">
+        <span class="dash-connection" id="dash-connection" data-status="connecting">
+          <span class="dash-connection__dot" aria-hidden="true"></span>
+          <span id="dash-connection-text">CONECTANDO</span>
+        </span>
+        <span class="dash-header__instructor" id="dash-instructor">—</span>
+        <button class="dash-header__logout" id="btn-logout" type="button">SALIR</button>
+      </div>
+    </header>
+
+    <section class="dash-command" aria-label="Controles de la ronda">
+      <div class="dash-command__round">
+        <span class="dash-label">SALA</span>
+        <strong class="dash-command__code" id="round-code">—</strong>
+        <span class="dash-state" id="round-state" data-state="NONE">SIN RONDA</span>
+      </div>
+
+      <div class="dash-command__clock">
+        <span class="dash-label">CRONÓMETRO</span>
+        <strong class="dash-command__time" id="round-clock">--:--</strong>
+        <span class="dash-command__clock-note" id="round-clock-note">SIN PLAZO ACTIVO</span>
+      </div>
+
+      <div class="dash-command__capacity">
+        <span class="dash-label">OCUPACIÓN</span>
+        <strong class="dash-command__capacity-value" id="round-capacity">0 / 45</strong>
+        <div class="dash-command__track" aria-hidden="true">
+          <div class="dash-command__fill" id="round-capacity-fill"></div>
+        </div>
+      </div>
+
+      <div class="dash-command__actions">
+        <button class="dash-btn dash-btn--start" id="btn-start" type="button" disabled>INICIAR RONDA</button>
+        <button class="dash-btn dash-btn--freeze" id="btn-freeze" type="button" disabled>CONGELAR</button>
+        <button class="dash-btn dash-btn--finish" id="btn-finish" type="button" disabled>FINALIZAR</button>
+        <button class="dash-btn dash-btn--new" id="btn-new" type="button" disabled>NUEVA RONDA</button>
+      </div>
+    </section>
+
+    <main class="dash-main">
+      <div class="dash-main__head">
+        <div>
+          <span class="dash-label">MATRIZ DE PUESTOS</span>
+          <span class="dash-main__counter" id="seats-counter">0 / 45 OCUPADOS</span>
+        </div>
+        <div class="dash-legend" aria-label="Leyenda de estados">
+          <span data-legend="JUGANDO">JUGANDO</span>
+          <span data-legend="CALIBRADO">CALIBRADO</span>
+          <span data-legend="DESCONECTADO">DESCONECTADO</span>
+          <span data-legend="BLOQUEADO">BLOQUEADO</span>
+          <span data-legend="EXPULSADO">EXPULSADO</span>
+        </div>
+      </div>
+
+      <div class="seat-matrix" id="seat-matrix" role="grid" aria-label="45 puestos de aprendices"></div>
+
+      <div class="dash-empty" id="dash-empty">
+        <span class="dash-empty__code">SIN SEÑAL DE RONDA</span>
+        <p id="dash-empty-text">Crea una ronda para habilitar el ingreso de los aprendices.</p>
+        <button class="dash-btn dash-btn--start" id="btn-empty-new" type="button">CREAR RONDA</button>
+      </div>
+    </main>
+
+    <footer class="dash-footer">
+      <span>TELEMETRÍA FORMATIVA · REPORTADA POR EL CLIENTE</span>
+      <span>NO USAR COMO CALIFICACIÓN DEFINITIVA</span>
+      <span id="dash-server-time">—</span>
+    </footer>
+  </div>
+
+  <div class="dash-toast" id="dash-toast" role="status" aria-live="polite" hidden></div>
+
+  <script type="module" src="/instructor/main.ts"></script>
+</body>
+</html>

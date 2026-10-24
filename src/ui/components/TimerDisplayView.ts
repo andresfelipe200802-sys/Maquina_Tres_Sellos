@@ -28,6 +28,8 @@ export class TimerDisplayView implements IPuzzleObserver {
   private readonly puzzle: WaterSamplePuzzle;
   private readonly lockdownView?: LockdownOverlayView;
   private readonly totalSeconds: number;
+  private serverDeadline: number | null = null;
+  private externallyFrozen = false;
 
   public constructor(options: TimerDisplayViewOptions) {
     this.displayElement = options.displayElement;
@@ -58,12 +60,61 @@ export class TimerDisplayView implements IPuzzleObserver {
       // Pausar el cronómetro durante el enclavamiento
       this.timer.stop();
     } else if (eventType === 'RESET') {
-      // Al purgar, reiniciar a 15:00 y arrancar de nuevo
-      this.timer.reset(this.totalSeconds);
-      this.timer.start();
-    } else if (stateName === 'MANIPULATING' && !this.timer.isActive() && !this.timer.isExpired()) {
+      if (this.serverDeadline !== null) {
+        // En modo online la purga NO regresa el reloj: manda el plazo del servidor.
+        this.syncFromServer();
+        if (!this.externallyFrozen && !this.timer.isExpired()) this.timer.start();
+      } else {
+        // Al purgar en modo local, reiniciar a 15:00 y arrancar de nuevo
+        this.timer.reset(this.totalSeconds);
+        this.timer.start();
+      }
+    } else if (
+      stateName === 'MANIPULATING' &&
+      !this.externallyFrozen &&
+      !this.timer.isActive() &&
+      !this.timer.isExpired()
+    ) {
       this.timer.start();
     }
+  }
+
+  /** Activa el reloj autoritativo del servidor (modo sala). */
+  public setServerDeadline(deadlineAt: number | null): void {
+    this.serverDeadline = deadlineAt;
+    if (deadlineAt === null) return;
+    this.syncFromServer();
+    if (
+      !this.externallyFrozen &&
+      !this.timer.isExpired() &&
+      this.puzzle.getStateName() === 'MANIPULATING'
+    ) {
+      this.timer.start();
+    }
+  }
+
+  /** Pausa o reanuda el reloj cuando el instructor congela la ronda. */
+  public setFrozen(frozen: boolean): void {
+    this.externallyFrozen = frozen;
+    if (frozen) {
+      this.timer.stop();
+      return;
+    }
+    if (this.serverDeadline !== null) {
+      this.syncFromServer();
+      if (!this.timer.isExpired() && this.puzzle.getStateName() === 'MANIPULATING') {
+        this.timer.start();
+      }
+    } else if (this.puzzle.getStateName() === 'MANIPULATING' && !this.timer.isActive()) {
+      this.timer.start();
+    }
+  }
+
+  public getRemainingSeconds(): number {
+    if (this.serverDeadline !== null) {
+      return Math.max(0, Math.ceil((this.serverDeadline - Date.now()) / 1000));
+    }
+    return this.timer.getTimeRemaining();
   }
 
   public destroy(): void {
@@ -75,22 +126,35 @@ export class TimerDisplayView implements IPuzzleObserver {
   }
 
   private handleTick(secondsLeft: number, formatted: string): void {
-    this.displayElement.textContent = formatted;
+    const effectiveSeconds =
+      this.serverDeadline !== null
+        ? Math.max(0, Math.ceil((this.serverDeadline - Date.now()) / 1000))
+        : secondsLeft;
+    this.displayElement.textContent =
+      this.serverDeadline !== null
+        ? CountdownTimer.formatSeconds(effectiveSeconds)
+        : formatted;
 
     if (this.fillElement) {
-      const percentage = Math.max(0, Math.min(100, (secondsLeft / this.totalSeconds) * 100));
+      const percentage = Math.max(0, Math.min(100, (effectiveSeconds / this.totalSeconds) * 100));
       this.fillElement.style.width = `${percentage.toFixed(1)}%`;
     }
 
     if (this.clockContainer) {
-      if (secondsLeft <= 60) {
+      if (effectiveSeconds <= 60) {
         this.clockContainer.dataset['urgency'] = 'critical';
-      } else if (secondsLeft <= 180) {
+      } else if (effectiveSeconds <= 180) {
         this.clockContainer.dataset['urgency'] = 'warning';
       } else {
         this.clockContainer.dataset['urgency'] = 'normal';
       }
     }
+  }
+
+  private syncFromServer(): void {
+    if (this.serverDeadline === null) return;
+    const secondsLeft = Math.max(0, Math.ceil((this.serverDeadline - Date.now()) / 1000));
+    this.timer.reset(secondsLeft);
   }
 
   private handleExpire(): void {
