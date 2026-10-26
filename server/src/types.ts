@@ -67,6 +67,7 @@ export interface Player {
   lastSeen: number | null;
   disconnectedAt: number | null;
   kickedAt: number | null;
+  blockedReason: string | null;
   createdAt: number;
 }
 
@@ -101,6 +102,7 @@ export interface PublicPlayer {
   timeLeft: number;
   connected: boolean;
   kickedAt: number | null;
+  blockedReason: string | null;
 }
 
 export interface TelemetryPayload {
@@ -109,4 +111,5 @@ export interface TelemetryPayload {
   matched: number;
   timeLeft: number;
   state: string;
+  resets?: number;
 }

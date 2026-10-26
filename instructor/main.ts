@@ -362,6 +362,7 @@ function paintSeats(): void {
       seat.root.setAttribute('aria-label', `Puesto ${index + 1} libre`);
       seat.status.textContent = 'LIBRE';
       seat.name.textContent = 'PUESTO LIBRE';
+      seat.root.title = '';
       seat.moves.textContent = '—';
       seat.fails.textContent = '—';
       seat.matched.textContent = '—';
@@ -373,7 +374,9 @@ function paintSeats(): void {
 
     seat.root.dataset['status'] = player.status;
     seat.root.classList.remove('seat-card--empty');
-    seat.root.setAttribute('aria-label', `Puesto ${index + 1}: ${player.name}, ${STATUS_LABELS[player.status] ?? player.status}`);
+    seat.root.title = player.blockedReason ?? '';
+    const reasonSuffix = player.blockedReason ? `. Motivo: ${player.blockedReason}` : '';
+    seat.root.setAttribute('aria-label', `Puesto ${index + 1}: ${player.name}, ${STATUS_LABELS[player.status] ?? player.status}${reasonSuffix}`);
     seat.status.textContent = STATUS_LABELS[player.status] ?? player.status;
     seat.name.textContent = player.name;
     seat.name.title = player.name;

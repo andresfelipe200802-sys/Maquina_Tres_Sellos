@@ -221,8 +221,8 @@
         </div>
 
         <div class="lockdown-overlay__instructions">
-          <span class="lockdown-overlay__inst-title">¿CÓMO DESBLOQUEAR LA CONSOLA?</span>
-          <p class="lockdown-overlay__inst-text">
+          <span class="lockdown-overlay__inst-title" id="lockdown-instructions-title">¿CÓMO DESBLOQUEAR LA CONSOLA?</span>
+          <p class="lockdown-overlay__inst-text" id="lockdown-instructions-text">
             Presiona el botón <strong>PURGAR Y DESBLOQUEAR SISTEMA</strong>. Esto drenará las líneas de mezcla, restablecerá el contador a 0 fallos y te permitirá reanudar la calibración de inmediato.
           </p>
         </div>
@@ -302,6 +302,15 @@
         ACTUALIZAR SALA
       </button>
 
+      <a class="access-gate__admin" id="gate-admin" href="./instructor/">
+        <span class="access-gate__admin-icon" aria-hidden="true">▣</span>
+        <span class="access-gate__admin-text">
+          <strong>ACCESO ADMINISTRADOR</strong>
+          <small>CREAR RONDA · MONITOREAR 45 PUESTOS</small>
+        </span>
+        <span class="access-gate__admin-arrow" aria-hidden="true">→</span>
+      </a>
+
       <p class="access-gate__privacy">
         Solo se almacena tu nombre visible durante la ronda. No se solicitan datos
         personales adicionales.
@@ -332,8 +341,8 @@
           <span></span><span></span><span></span>
         </div>
         <p class="waiting-room__note">
-          Mantén esta pestaña abierta. Si sales más de 10 segundos, tu puesto se
-          bloqueará hasta la próxima ronda.
+          Mantén esta pestaña abierta y visible. Cuando la ronda inicie, recargar,
+          salir o cambiar de pestaña bloqueará tu puesto de inmediato.
         </p>
       </div>
     </div>
@@ -373,7 +382,8 @@
       </button>
       <p class="session-end__note">
         La autorización de esta sesión quedó anulada. Podrás ingresar nuevamente
-        cuando el instructor abra otra ronda.
+        cuando el instructor abra otra ronda. Si el bloqueo fue por salir de la
+        pantalla o por manipular los contadores, el instructor verá el motivo.
       </p>
     </div>
   </div>

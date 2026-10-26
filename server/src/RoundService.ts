@@ -11,6 +11,46 @@ import type {
   TelemetryPayload,
 } from './types.js';
 
+/**
+ * Motivos visibles para el aprendiz cuando el servidor cierra su participación.
+ * Se envían por WebSocket y también quedan en el evento JUGADOR_BLOQUEADO.
+ */
+export const BLOCK_REASONS = {
+  SCREEN_EXIT:
+    'La terminal detectó que saliste de la pantalla: recargaste, cerraste, cambiaste de pestaña o minimizaste la ventana durante la ronda. Tu puesto fue bloqueado automáticamente y no podrás volver hasta una nueva ronda.',
+  ATTEMPT_LIMIT:
+    'Alcanzaste el límite de 3 análisis fallidos. En modo sala la purga está deshabilitada, así que tu participación en esta ronda terminó.',
+  COUNTER_RESET:
+    'La terminal detectó un reinicio no autorizado de la muestra o de los contadores de intentos. Tu puesto fue bloqueado automáticamente.',
+  INVALID_TELEMETRY:
+    'La terminal detectó datos de juego inválidos o manipulados. Tu puesto fue bloqueado automáticamente.',
+  INVALID_SOLUTION:
+    'La terminal detectó una validación de victoria no autorizada. Tu puesto fue bloqueado automáticamente.',
+  DUPLICATE_SESSION:
+    'Se abrió otra pestaña o conexión con tu sesión durante la partida. Solo se permite una pantalla por aprendiz; tu puesto fue bloqueado automáticamente.',
+  NO_PRESENCE:
+    'La terminal dejó de recibir tu señal de presencia durante la partida. Tu puesto fue bloqueado automáticamente.',
+  ABSENT_AT_START:
+    'No estabas conectado cuando inició la ronda. Tu puesto fue bloqueado automáticamente.',
+  WAITING_TIMEOUT:
+    'No volviste a la sala de espera dentro del tiempo permitido. Tu puesto fue bloqueado para esta ronda.',
+  TIME_EXPIRED: 'Se agotó el tiempo de la ronda sin completar la calibración.',
+  GENERIC: 'Tu puesto quedó bloqueado. Podrás volver cuando el instructor abra una nueva ronda.',
+} as const;
+
+/** Si no llega telemetría en este plazo, la pantalla dejó de estar presente. */
+const PRESENCE_TIMEOUT_MS = 20_000;
+const MAX_FAILS = 3;
+const MAX_MATCHED = 16;
+const TELEMETRY_STATES = new Set([
+  'STANDBY',
+  'MANIPULATING',
+  'EVALUATING',
+  'SOLVED',
+  'RESUELTO',
+  'LOCKED',
+]);
+
 export interface RoundEvents {
   roundChanged(round: Round): void;
   playersChanged(roundId: number): void;
@@ -60,6 +100,7 @@ export function toPublicPlayer(player: Player): PublicPlayer {
       player.status !== 'EXPULSADO' &&
       player.status !== 'BLOQUEADO',
     kickedAt: player.kickedAt,
+    blockedReason: player.blockedReason,
   };
 }
 
@@ -80,6 +121,7 @@ export function toPublicRound(round: Round, players: Player[]): PublicRound {
 export class RoundService {
   private events: RoundEvents = silentEvents;
   private readonly graceTimers = new Map<number, NodeJS.Timeout>();
+  private readonly blockReasons = new Map<number, string>();
 
   public constructor(
     private readonly store: Store,
@@ -160,10 +202,16 @@ export class RoundService {
         return { round: null, players: [] };
       }
       const players = await this.store.listPlayers(latest.id);
-      return { round: toPublicRound(latest, players), players: players.map(toPublicPlayer) };
+      return {
+        round: toPublicRound(latest, players),
+        players: players.map((player) => toPublicPlayer(this.withBlockReason(player))),
+      };
     }
     const players = await this.store.listPlayers(round.id);
-    return { round: toPublicRound(round, players), players: players.map(toPublicPlayer) };
+    return {
+      round: toPublicRound(round, players),
+      players: players.map((player) => toPublicPlayer(this.withBlockReason(player))),
+    };
   }
 
   public async activeRoundPublic(): Promise<PublicRound | null> {
@@ -228,8 +276,24 @@ export class RoundService {
     await this.store.updateRound(round);
 
     for (const player of players) {
-      player.status = 'JUGANDO';
-      player.timeLeft = round.durationSeconds;
+      if (player.status === 'EN_ESPERA') {
+        player.status = 'JUGANDO';
+        player.timeLeft = round.durationSeconds;
+        player.lastSeen = now;
+        player.disconnectedAt = null;
+        player.blockedReason = null;
+      } else if (player.status === 'DESCONECTADO') {
+        // No se puede empezar a jugar desde una pantalla ausente: la ventana
+        // de gracia de la sala de espera no se extiende a la partida.
+        player.status = 'BLOQUEADO';
+        player.blockedReason = BLOCK_REASONS.ABSENT_AT_START;
+        player.disconnectedAt = player.disconnectedAt ?? now;
+        this.blockReasons.set(player.id, BLOCK_REASONS.ABSENT_AT_START);
+        await this.store.appendEvent(round.id, player.id, 'JUGADOR_BLOQUEADO', {
+          motivo: BLOCK_REASONS.ABSENT_AT_START,
+          codigo: 'AUSENTE_AL_INICIAR',
+        }, now);
+      }
       await this.store.updatePlayer(player);
     }
     await this.store.appendEvent(round.id, null, 'RONDA_INICIADA', { jugadores: players.length }, now);
@@ -268,6 +332,15 @@ export class RoundService {
     }
 
     const players = await this.store.listPlayers(round.id);
+    if (!frozen) {
+      // Al reanudar, la pantalla vuelve a estar activa: se reinicia el reloj
+      // de presencia para no confundir la pausa con una salida del aprendiz.
+      for (const player of players) {
+        if (player.status !== 'JUGANDO') continue;
+        player.lastSeen = now;
+        await this.store.updatePlayer(player);
+      }
+    }
     this.events.roundChanged(round);
     this.events.playersChanged(round.id);
     return toPublicRound(round, players);
@@ -370,6 +443,21 @@ export class RoundService {
     const round = await this.store.getRoundById(player.roundId);
     if (!round) throw new AppError(404, 'ROUND_NOT_FOUND', 'La ronda no existe.');
 
+    // Durante la partida no existe reconexión: si la pantalla se desconectó,
+    // el jugador ya quedó bloqueado. Esto también cubre datos persistidos por
+    // una versión anterior del servidor.
+    if (round.status === 'EN_JUEGO' || round.status === 'CONGELADA') {
+      if (player.status === 'DESCONECTADO' || player.disconnectedAt !== null) {
+        await this.applyBlock(
+          player,
+          round,
+          BLOCK_REASONS.SCREEN_EXIT,
+          { codigo: 'SALIDA_PANTALLA' },
+        );
+        throw new AppError(403, 'PLAYER_BLOCKED', BLOCK_REASONS.SCREEN_EXIT);
+      }
+    }
+
     this.clearGraceTimer(player.id);
     const now = Date.now();
     player.connectedAt = now;
@@ -396,6 +484,18 @@ export class RoundService {
     const round = await this.store.getRoundById(player.roundId);
     if (!round || round.status === 'FINALIZADA') return;
 
+    if (round.status === 'EN_JUEGO' || round.status === 'CONGELADA') {
+      // Regla de sala: salir/recargar durante la partida bloquea el puesto de
+      // inmediato. La ventana de gracia queda reservada para la sala de espera.
+      await this.applyBlock(
+        player,
+        round,
+        BLOCK_REASONS.SCREEN_EXIT,
+        { codigo: 'SALIDA_PANTALLA' },
+      );
+      return;
+    }
+
     const now = Date.now();
     player.status = 'DESCONECTADO';
     player.disconnectedAt = now;
@@ -414,23 +514,136 @@ export class RoundService {
     this.graceTimers.set(player.id, timer);
   }
 
+  /**
+   * Bloqueo explícito solicitado por el canal (pestaña duplicada) o por una
+   * violación de integridad. Es idempotente y no toca jugadores ya calificados.
+   */
+  public async blockPlayer(
+    playerId: number,
+    reason: string,
+    detail: Record<string, unknown> | null = null,
+  ): Promise<void> {
+    const player = await this.store.findPlayerById(playerId);
+    if (!player) return;
+    if (
+      player.status === 'EXPULSADO' ||
+      player.status === 'CALIBRADO' ||
+      player.status === 'BLOQUEADO'
+    ) {
+      return;
+    }
+    const round = await this.store.getRoundById(player.roundId);
+    if (!round || round.status === 'FINALIZADA') return;
+    const enriched = this.withBlockReason(player);
+    await this.applyBlock(enriched, round, reason, detail);
+  }
+
+  /** La pestaña pasó a segundo plano, se minimizó o se abandonó. */
+  public async reportScreenExit(token: string): Promise<void> {
+    const player = await this.playerByToken(token);
+    const round = await this.store.getRoundById(player.roundId);
+    if (!round || (round.status !== 'EN_JUEGO' && round.status !== 'CONGELADA')) return;
+    if (player.status !== 'JUGANDO') return;
+    await this.applyBlock(
+      player,
+      round,
+      BLOCK_REASONS.SCREEN_EXIT,
+      { codigo: 'PANTALLA_OCULTA' },
+    );
+  }
+
   public async telemetry(token: string, payload: TelemetryPayload): Promise<void> {
     const player = await this.playerByToken(token);
     this.assertPlayerActive(player);
     const round = await this.store.getRoundById(player.roundId);
     if (!round) throw new AppError(404, 'ROUND_NOT_FOUND', 'La ronda no existe.');
     if (round.status === 'ABIERTA' || round.status === 'FINALIZADA') return;
+    if (player.status === 'CALIBRADO') return;
 
     const now = Date.now();
+    const moves = parseCounter(payload.moves);
+    const fails = parseCounter(payload.fails);
+    const matched = parseCounter(payload.matched);
+    const resets = parseCounter(payload.resets ?? 0);
+    const state = typeof payload.state === 'string' ? payload.state : '';
+
+    if (
+      moves === null ||
+      fails === null ||
+      matched === null ||
+      resets === null ||
+      matched > MAX_MATCHED ||
+      !TELEMETRY_STATES.has(state)
+    ) {
+      await this.applyBlock(
+        player,
+        round,
+        BLOCK_REASONS.INVALID_TELEMETRY,
+        { codigo: 'TELEMETRIA_INVALIDA' },
+      );
+      return;
+    }
+
+    // Una purga local reinicia la muestra y los fallos. Aunque el aprendiz
+    // vuelva a superar los contadores anteriores antes del siguiente latido,
+    // el contador de reseteos delata la maniobra.
+    if (resets > 0) {
+      await this.applyBlock(
+        player,
+        round,
+        BLOCK_REASONS.COUNTER_RESET,
+        { codigo: 'PURGA_DETECTADA', reseteos: resets },
+      );
+      return;
+    }
+
+    // En modo sala los contadores solo pueden crecer. Un descenso solo es
+    // posible si se ejecutó una purga o se manipuló el cliente.
+    if (moves < player.moves || fails < player.fails) {
+      await this.applyBlock(
+        player,
+        round,
+        BLOCK_REASONS.COUNTER_RESET,
+        { codigo: 'CONTADOR_REINICIADO', movimientos: moves, fallos: fails },
+      );
+      return;
+    }
+
     player.lastSeen = now;
-    player.moves = Math.max(player.moves, safeNonNegative(payload.moves));
-    player.fails = Math.max(player.fails, safeNonNegative(payload.fails));
-    player.matched = Math.max(player.matched, Math.min(16, safeNonNegative(payload.matched)));
+    player.moves = Math.max(player.moves, moves);
+    player.fails = Math.max(player.fails, fails);
+    player.matched = Math.max(player.matched, matched);
     player.timeLeft = this.computeTimeLeft(round, now);
 
-    if ((payload.state === 'RESUELTO' || payload.state === 'SOLVED') && player.status !== 'CALIBRADO') {
+    if (player.fails >= MAX_FAILS) {
+      await this.applyBlock(
+        player,
+        round,
+        BLOCK_REASONS.ATTEMPT_LIMIT,
+        { codigo: 'LIMITE_FALLOS', fallos: player.fails },
+      );
+      return;
+    }
+
+    if (state === 'SOLVED' || state === 'RESUELTO') {
+      if (matched !== MAX_MATCHED) {
+        await this.applyBlock(
+          player,
+          round,
+          BLOCK_REASONS.INVALID_SOLUTION,
+          { codigo: 'VICTORIA_INVALIDA', coincidencias: matched },
+        );
+        return;
+      }
       player.status = 'CALIBRADO';
-      await this.store.appendEvent(round.id, player.id, 'TELEMETRIA', { estado: 'CALIBRADO' }, now);
+      player.blockedReason = null;
+      await this.store.appendEvent(
+        round.id,
+        player.id,
+        'TELEMETRIA',
+        { estado: 'CALIBRADO', movimientos: player.moves, fallos: player.fails },
+        now,
+      );
     } else if (player.status === 'DESCONECTADO') {
       player.status = 'JUGANDO';
       player.disconnectedAt = null;
@@ -454,12 +667,16 @@ export class RoundService {
 
       const players = await this.store.listPlayers(round.id);
       for (const player of players) {
-        if (player.status !== 'CALIBRADO') {
-          player.status = 'BLOQUEADO';
-          player.timeLeft = 0;
-          await this.store.updatePlayer(player);
-          this.events.playerChanged(player);
+        if (player.status === 'CALIBRADO' || player.status === 'EXPULSADO' || player.status === 'BLOQUEADO') {
+          continue;
         }
+        player.timeLeft = 0;
+        await this.applyBlock(
+          player,
+          round,
+          BLOCK_REASONS.TIME_EXPIRED,
+          { codigo: 'TIEMPO_AGOTADO' },
+        );
       }
       this.events.roundChanged(round);
       this.events.playersChanged(round.id);
@@ -468,6 +685,20 @@ export class RoundService {
 
     if (round.status === 'FINALIZADA') return;
     const players = await this.store.listPlayers(round.id);
+
+    if (round.status === 'EN_JUEGO') {
+      for (const player of players) {
+        if (player.status !== 'JUGANDO' || player.lastSeen === null) continue;
+        if (now - player.lastSeen < PRESENCE_TIMEOUT_MS) continue;
+        await this.applyBlock(
+          player,
+          round,
+          BLOCK_REASONS.NO_PRESENCE,
+          { codigo: 'SIN_PRESENCIA', ultimoLatido: player.lastSeen },
+        );
+      }
+    }
+
     for (const player of players) {
       if (player.status !== 'DESCONECTADO' || player.disconnectedAt === null) continue;
       if (now - player.disconnectedAt >= this.config.disconnectGraceSeconds * 1000) {
@@ -486,15 +717,65 @@ export class RoundService {
     if (!player || player.status !== 'DESCONECTADO') return;
     const round = await this.store.getRoundById(player.roundId);
     if (!round || round.status === 'FINALIZADA') return;
+    if (round.status === 'EN_JUEGO' || round.status === 'CONGELADA') {
+      await this.applyBlock(
+        player,
+        round,
+        BLOCK_REASONS.SCREEN_EXIT,
+        { codigo: 'SALIDA_PANTALLA' },
+        now,
+      );
+      return;
+    }
     if (player.disconnectedAt !== null && now - player.disconnectedAt < this.config.disconnectGraceSeconds * 1000) {
       return;
     }
 
+    await this.applyBlock(
+      player,
+      round,
+      BLOCK_REASONS.WAITING_TIMEOUT,
+      { codigo: 'SIN_RECONEXION' },
+      now,
+    );
+  }
+
+  private async applyBlock(
+    player: Player,
+    round: Round,
+    reason: string,
+    detail: Record<string, unknown> | null = null,
+    now = Date.now(),
+  ): Promise<void> {
+    if (
+      player.status === 'EXPULSADO' ||
+      player.status === 'CALIBRADO' ||
+      player.status === 'BLOQUEADO'
+    ) {
+      return;
+    }
+    this.clearGraceTimer(player.id);
     player.status = 'BLOQUEADO';
+    player.blockedReason = reason;
+    player.disconnectedAt = player.disconnectedAt ?? now;
+    this.blockReasons.set(player.id, reason);
     await this.store.updatePlayer(player);
-    await this.store.appendEvent(round.id, player.id, 'JUGADOR_BLOQUEADO', null, now);
+    await this.store.appendEvent(
+      round.id,
+      player.id,
+      'JUGADOR_BLOQUEADO',
+      { motivo: reason, ...(detail ?? {}) },
+      now,
+    );
     this.events.playerChanged(player);
     this.events.playersChanged(round.id);
+  }
+
+  private withBlockReason(player: Player): Player {
+    if (player.status === 'BLOQUEADO' && !player.blockedReason) {
+      player.blockedReason = this.blockReasons.get(player.id) ?? BLOCK_REASONS.GENERIC;
+    }
+    return player;
   }
 
   private async ownedRound(roundId: number, instructorId: number): Promise<Round> {
@@ -510,6 +791,9 @@ export class RoundService {
     if (!token) throw new AppError(401, 'PLAYER_AUTH_REQUIRED', 'Token de aprendiz requerido.');
     const player = await this.store.findPlayerByTokenHash(sha256(token));
     if (!player) throw new AppError(401, 'PLAYER_SESSION_INVALID', 'El acceso no es válido.');
+    if (player.status === 'BLOQUEADO' && !player.blockedReason) {
+      player.blockedReason = this.blockReasons.get(player.id) ?? BLOCK_REASONS.GENERIC;
+    }
     return player;
   }
 
@@ -518,7 +802,11 @@ export class RoundService {
       throw new AppError(403, 'PLAYER_KICKED', 'El instructor retiró tu acceso a esta ronda.');
     }
     if (player.status === 'BLOQUEADO') {
-      throw new AppError(403, 'PLAYER_BLOCKED', 'Tu acceso quedó bloqueado. Espera una nueva ronda.');
+      throw new AppError(
+        403,
+        'PLAYER_BLOCKED',
+        player.blockedReason ?? BLOCK_REASONS.GENERIC,
+      );
     }
   }
 
@@ -538,8 +826,8 @@ export class RoundService {
   }
 }
 
-function safeNonNegative(value: unknown): number {
+function parseCounter(value: unknown): number | null {
   const parsed = typeof value === 'number' ? value : Number(value);
-  if (!Number.isFinite(parsed) || parsed < 0) return 0;
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
   return Math.min(100_000, Math.floor(parsed));
 }

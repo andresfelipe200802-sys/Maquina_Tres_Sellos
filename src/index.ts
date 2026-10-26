@@ -79,6 +79,7 @@ let puzzle: WaterSamplePuzzle | null = null;
 let controller: GameController | null = null;
 let timerView: TimerDisplayView | null = null;
 let telemetryTimer: number | null = null;
+let puzzleResetCount = 0;
 let currentRound: OnlineRound | null = null;
 let currentPlayer: OnlinePlayer | null = null;
 let learnerSession: LearnerSession | null = null;
@@ -109,6 +110,9 @@ function wireGlobalControls(): void {
 
   const lockdownPurgeBtn = document.querySelector<HTMLButtonElement>('#btn-lockdown-purge');
   lockdownPurgeBtn?.addEventListener('click', () => {
+    // En modo sala la purga permitiría borrar los 3 fallos y reiniciar la
+    // muestra: se desactiva para preservar el límite de intentos.
+    if (ONLINE_ENABLED) return;
     puzzle?.reset();
   });
 
@@ -159,7 +163,9 @@ function bootstrap(difficulty: string, options: BootstrapOptions = {}): void {
     $('#move-counter'),
     $('#fail-counter'),
   );
-  const lockdownOverlay = new LockdownOverlayView($('#lockdown-overlay'), nextPuzzle);
+  const lockdownOverlay = new LockdownOverlayView($('#lockdown-overlay'), nextPuzzle, {
+    allowPurge: !ONLINE_ENABLED,
+  });
   const soundManager = new SoundManager();
 
   const timerDisplay = document.querySelector<HTMLElement>('#timer-display');
@@ -199,13 +205,45 @@ function bootstrap(difficulty: string, options: BootstrapOptions = {}): void {
     difficultySelector.value = difficulty;
   }
 
+  if (ONLINE_ENABLED) applyOnlineControlPolicy();
+
   // Energizar (STANDBY -> MANIPULATING) y pintar el estado inicial en las vistas.
   nextPuzzle.reset();
+  // El reset de arranque no cuenta como purga del aprendiz.
+  puzzleResetCount = 0;
 
   if (ONLINE_ENABLED && options.deadlineAt !== undefined) {
     timerView?.setServerDeadline(options.deadlineAt ?? null);
     if (options.frozen) timerView?.setFrozen(true);
     startTelemetry();
+  }
+}
+
+/** Ajusta los controles que no pueden existir en una ronda supervisada. */
+function applyOnlineControlPolicy(): void {
+  const reset = document.querySelector<HTMLButtonElement>('#btn-reset');
+  if (reset) {
+    reset.disabled = true;
+    reset.setAttribute('aria-disabled', 'true');
+    reset.title = 'La purga está deshabilitada en modo sala: borraría los fallos y reiniciaría la muestra.';
+  }
+
+  const purge = document.querySelector<HTMLButtonElement>('#btn-lockdown-purge');
+  if (purge) {
+    purge.disabled = true;
+    purge.setAttribute('aria-disabled', 'true');
+    purge.title = 'La purga está deshabilitada en modo sala.';
+    const label = purge.querySelector<HTMLElement>('span:last-child');
+    if (label) label.textContent = 'PURGA DESHABILITADA EN MODO SALA';
+  }
+
+  const instructionsTitle = document.querySelector<HTMLElement>('#lockdown-instructions-title');
+  if (instructionsTitle) instructionsTitle.textContent = 'FIN DE LA PARTICIPACIÓN';
+
+  const instructionsText = document.querySelector<HTMLElement>('#lockdown-instructions-text');
+  if (instructionsText) {
+    instructionsText.textContent =
+      'En modo sala no se permite purgar el sistema, porque eso reiniciaría el contador de fallos. Al tercer análisis fallido el servidor cierra tu participación en esta ronda.';
   }
 }
 
@@ -216,6 +254,7 @@ function teardownGame(): void {
   timerView?.destroy();
   timerView = null;
   puzzle = null;
+  puzzleResetCount = 0;
   stopTelemetry();
   document.querySelector('#solved-overlay')?.classList.remove('solved-overlay--visible');
   document.querySelector('#lockdown-overlay')?.classList.remove('lockdown-overlay--visible');
@@ -238,6 +277,9 @@ function attachTelemetryObserver(subject: WaterSamplePuzzle): void {
   if (!ONLINE_ENABLED) return;
   subject.attach({
     onPuzzleUpdated(_sum, _stateName, eventType) {
+      if (eventType === PuzzleEventType.RESET) {
+        puzzleResetCount += 1;
+      }
       if (
         eventType === PuzzleEventType.VALIDATION_PASSED ||
         eventType === PuzzleEventType.LOCKED
@@ -279,6 +321,7 @@ function sendTelemetryNow(): void {
     matched,
     timeLeft: timerView.getRemainingSeconds(),
     state: puzzle.getStateName(),
+    resets: puzzleResetCount,
   });
 }
 
@@ -315,6 +358,22 @@ function initOnline(): void {
     currentRound = null;
     currentPlayer = null;
     void refreshGate();
+  });
+
+  // Defensa de presencia: recargar, cerrar, cambiar de pestaña o minimizar
+  // durante la partida se reporta al servidor y bloquea el puesto.
+  window.addEventListener('beforeunload', (event) => {
+    if (!isGameActive()) return;
+    event.preventDefault();
+    event.returnValue = '';
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && isGameActive()) {
+      learnerSession?.reportScreenExit();
+    }
+  });
+  window.addEventListener('pagehide', () => {
+    if (isGameActive()) learnerSession?.reportScreenExit();
   });
 
   if (learnerSession.hasStoredToken()) {
@@ -429,13 +488,14 @@ function handlePlayerState(player: OnlinePlayer): void {
   const round = currentRound;
 
   if (player.status === 'EXPULSADO') {
-    showSessionEnd('kicked', 'El instructor retiró tu acceso a esta ronda.');
+    learnerSession?.endLocally('kicked', 'El instructor retiró tu acceso a esta ronda.');
     return;
   }
   if (player.status === 'BLOQUEADO') {
-    showSessionEnd(
+    learnerSession?.endLocally(
       'blocked',
-      'Tu puesto quedó bloqueado por desconexión. Podrás volver en la próxima ronda.',
+      player.blockedReason ??
+        'Tu puesto quedó bloqueado. Podrás volver cuando el instructor abra una nueva ronda.',
     );
     return;
   }
@@ -449,16 +509,20 @@ function handlePlayerState(player: OnlinePlayer): void {
   }
 }
 
+function isGameActive(): boolean {
+  if (controller === null) return false;
+  if (currentPlayer?.status !== 'JUGANDO') return false;
+  return currentRound?.status === 'EN_JUEGO' || currentRound?.status === 'CONGELADA';
+}
+
 function showSessionEnd(kind: SessionEndKind, message: string): void {
   freezeOverlay?.hide();
   waitingRoom?.hide();
   accessGate?.hide();
   teardownGame();
   currentPlayer = null;
+  learnerSession?.disconnect(true);
   sessionEndView?.show(kind, message);
-  if (kind === 'finished') {
-    learnerSession?.disconnect(true);
-  }
 }
 
 function handleTokenInvalid(): void {

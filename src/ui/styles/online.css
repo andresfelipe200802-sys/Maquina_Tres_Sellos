@@ -464,6 +464,75 @@
   color: rgba(127, 184, 161, 0.65);
 }
 
+/* Acceso directo al panel de administración desde la terminal del aprendiz. */
+.access-gate__admin {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--online-line);
+  border-left: 3px solid var(--online-cyan);
+  border-radius: 3px;
+  background: rgba(0, 14, 11, 0.55);
+  color: var(--online-ink);
+  text-decoration: none;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.access-gate__admin:hover {
+  border-color: var(--online-cyan);
+  background: rgba(0, 32, 28, 0.72);
+  box-shadow: 0 0 20px rgba(56, 217, 255, 0.12);
+}
+
+.access-gate__admin:focus-visible {
+  outline: 2px solid var(--online-cyan);
+  outline-offset: 2px;
+}
+
+.access-gate__admin-icon {
+  color: var(--online-cyan);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.access-gate__admin-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.access-gate__admin-text strong {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--online-cyan);
+}
+
+.access-gate__admin-text small {
+  font-size: 0.5rem;
+  letter-spacing: 0.1em;
+  color: var(--online-muted);
+}
+
+.access-gate__admin-arrow {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--online-cyan);
+  font-size: 1rem;
+}
+
+/* En modo sala la purga no puede borrar los fallos ni reiniciar la muestra. */
+.mode-online #btn-reset:disabled,
+.mode-online #btn-lockdown-purge:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.45);
+  box-shadow: none;
+}
+
 /* ═══ Sala de espera ═══ */
 .waiting-room {
   position: fixed;

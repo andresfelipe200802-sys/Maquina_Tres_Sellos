@@ -1010,7 +1010,7 @@ La Fase 5 queda **cerrada y activa de forma permanente**. La auditoría demuestr
 # Fase 6. Capa de control de aula SENA (modo online)
 
 **Fecha de ejecución:** 24 de Octubre de 2026
-**Estado:** Implementado y verificado (frontend 105/105, servidor 9/9, build y auditorías en verde).
+**Estado:** Implementado y verificado (frontend 105/105, servidor 9/9 en su cierre original; ampliado a 17/17 en la Fase 6.2, build y auditorías en verde).
 
 ---
 
@@ -1239,7 +1239,7 @@ Credenciales de desarrollo por defecto: `instructor / SENA2026*`. No deben usars
 | Pruebas frontend | `npm test` | **105/105 en 10 archivos** |
 | Build frontend | `npm run build` | **45 módulos, multipágina, sin errores** |
 | Tipos backend | `npm --prefix server run typecheck` | **0 errores** |
-| Pruebas backend | `npm --prefix server test` | **9/9** |
+| Pruebas backend | `npm --prefix server test` | **17/17** |
 | Build backend | `npm --prefix server run build` | **Sin errores** |
 | Auditoría frontend | `npm audit --omit=dev` | **0 vulnerabilidades** |
 | Auditoría backend | `npm --prefix server audit --omit=dev` | **0 vulnerabilidades** |
@@ -1273,3 +1273,152 @@ Credenciales de desarrollo por defecto: `instructor / SENA2026*`. No deben usars
 
 Se reejecutaron todas las puertas de calidad existentes después de integrar la capa online. El núcleo del acertijo, sus pruebas de invariantes y el comportamiento local siguen intactos. La nueva capa solo añade estados de aplicación, transporte, control de acceso y presentación alrededor del juego.
 
+---
+
+# Fase 6.1. Acceso directo al panel del instructor
+
+**Fecha de ejecución:** 25 de Octubre de 2026
+**Estado:** Corregido y verificado en navegador.
+
+Se restauró la integración que permite acceder al panel administrativo desde la misma primera pantalla del aprendiz, sin tener que escribir la ruta `/instructor/` por separado.
+
+## Cambios
+
+| Archivo | Cambio |
+| :--- | :--- |
+| `index.html` | Nuevo enlace `#gate-admin` dentro de la terminal de acceso, con la etiqueta «ACCESO ADMINISTRADOR» y destino relativo `./instructor/`. |
+| `src/ui/styles/online.css` | Estilo del acceso administrativo: borde cian, icono, texto secundario, flecha, estados hover y focus visible. |
+
+## Comportamiento
+
+- La pantalla inicial muestra el formulario de ingreso del aprendiz **y** el botón de acceso administrativo.
+- El enlace es relativo, por lo que funciona tanto en local como en una subruta de GitHub Pages.
+- No se modificó el flujo de ingreso, la validación de nombres ni las reglas de la ronda.
+- El enlace abre `/instructor/` y muestra el login del instructor.
+
+## Verificación
+
+| Control | Resultado |
+| :--- | :---: |
+| Enlace visible y con destino `./instructor/` | ✅ |
+| Navegación al login del instructor | ✅ |
+| Panel de acceso dentro del viewport a 1366×768 | ✅ `657 px` de alto, sin scroll de página |
+| Errores de consola | ✅ 0 |
+| Build de producción | ✅ |
+
+---
+
+# Fase 6.2. Blindaje anti-trampa del modo sala
+
+**Fecha de ejecución:** 26 de Octubre de 2026
+**Estado:** Implementado, probado en reglas, API/WebSocket y navegador real.
+
+## 1. Amenaza detectada
+
+Se reprodujo el abuso más rentable del modo online: el aprendiz fallaba una validación, el instructor veía `1` fallo, y al recargar la página el cliente creaba una muestra nueva con contadores locales en `0`. El servidor conservaba el fallo, pero el aprendiz recuperaba intentos y tablero sin que el docente pudiera impedirlo. La misma maniobra funcionaba cerrando la pestaña, navegando fuera o purgando el sistema desde la consola del navegador.
+
+| Escenario | Ventaja para el aprendiz | Impacto | Tratamiento implementado |
+| :--- | :--- | :---: | :--- |
+| Recargar la página durante la partida | Reinicia matriz, movimientos y fallos locales | **Crítico** | Bloqueo inmediato al desconectarse en `EN_JUEGO`/`CONGELADA`; sin período de gracia |
+| Cerrar pestaña, navegar o cambiar de pestaña | Abandona la pantalla y vuelve con estado limpio | **Crítico** | Evento `visibilitychange`/`pagehide` y bloqueo por salida de pantalla |
+| Minimizar o dejar la ventana en segundo plano | Puede consultar ayudas externas | Alto | Se considera salida de pantalla durante la partida |
+| Abrir una segunda pestaña o dispositivo | Duplica la pantalla y puede usar una para probar | Alto | Solo una conexión activa por aprendiz; la segunda queda rechazada |
+| Purgar con el botón o desde la consola | Reinicia la muestra y los contadores | Alto | Purga deshabilitada online y detección por contador de reseteos |
+| Alterar contadores o telemetría | Simula menos fallos o más progreso | Alto | Validación de tipos, rangos y monotonía; bloqueo con motivo específico |
+| Forzar el estado “resuelto” sin completar la matriz | Registra una victoria falsa | Alto | `SOLVED` exige 16 coincidencias y menos de 3 fallos |
+| Desconectarse sin cerrar y desaparecer | Evita el bloqueo visible | Medio | Timeout de presencia de 20 s con telemetría periódica |
+| Desconectarse en la sala de espera | Ninguna: aún no hay partida | Bajo | Se permite reconectar; al iniciar, quien esté ausente queda bloqueado |
+| Suplantar a otro compañero | Usar el nombre de un puesto | Medio | Nombre único por ronda y token de sesión; la verificación física sigue siendo docente |
+
+## 2. Decisión de política
+
+- Durante una partida activa **no existe reconexión**: cualquier cierre, recarga, pérdida de foco o silencio de telemetría superior a 20 segundos bloquea el puesto.
+- En la sala de espera sí se permite reconectar, porque no otorga ventaja de juego.
+- El bloqueo es definitivo para esa ronda. El instructor no lo revierte desde el puesto; debe finalizar/crear una nueva ronda o expulsar formalmente.
+- El tercer fallo descalifica automáticamente. No se puede “purga” para borrar el contador y seguir intentando.
+- La purga online se deshabilita en la interfaz y en el controlador de vistas. En modo local se conserva el comportamiento original.
+- El servidor sigue siendo la autoridad de estado, tiempo y reglas; el reloj y la validación de matriz no se movieron al cliente.
+- Las razones de bloqueo se conservan en el servidor para mostrarlas al aprendiz y explicarlas en el tooltip del instructor.
+
+## 3. Implementación
+
+| Archivo | Cambio |
+| :--- | :--- |
+| `server/src/RoundService.ts` | Motivos de bloqueo, desconexión activa sin gracia, descalificación por 3 fallos, timeout de presencia, detección de contadores decrecientes, telemetría inválida, purgas por contador de reseteos y victoria forzada. |
+| `server/src/Hub.ts` | Serialización de mensajes por conexión, bloqueo de segunda sesión activa, reporte de presencia, motivo en `player.state`, cierre ordenado sin bloquear por apagado del servidor. |
+| `server/src/types.ts` | `blockedReason` y `resets` en el contrato del servidor. |
+| `server/src/store/MemoryStore.ts` | Persistencia del motivo de bloqueo en memoria. |
+| `server/src/store/MySqlStore.ts` | Motivo de bloqueo durante la sesión; al reiniciar se usa un motivo genérico porque el esquema no añade columnas. |
+| `src/index.ts` | Advertencia `beforeunload`, reporte de salida de pantalla, contador de reseteos, política de purga online, manejo de bloqueo/expulsión y cierre de sockets. |
+| `src/online/LearnerSession.ts` | Reporte de `presence`, cierre local sin reconexión y manejo de pestaña reemplazada. |
+| `src/online/protocol.ts` | `blockedReason` y `resets` en el protocolo. |
+| `src/ui/components/LockdownOverlayView.ts` | Opción `allowPurge` para impedir la purga en sala. |
+| `src/ui/components/SessionEndView.ts` | Pantalla de bloqueo con motivo claro para el aprendiz. |
+| `instructor/main.ts` | Tooltip y texto accesible con el motivo del bloqueo en la matriz. |
+| `index.html` | Instrucciones de bloqueo/purga en español. |
+| `src/ui/styles/online.css` | Estado visual de controles de purga deshabilitados. |
+
+### 3.1. Reglas del servidor
+
+1. **Desconexión activa:** si el jugador está `JUGANDO` y se cierra el socket, se marca `BLOQUEADO` inmediatamente. No hay ventana de reconexión.
+2. **Salida de pantalla:** el cliente reporta `presence: screen_exit` al ocultar la pestaña o abandonar la página; el servidor bloquea si la ronda está activa.
+3. **Timeout de presencia:** el servidor compara `lastSeen` con el reloj autoritativo. Más de 20 s sin latido bloquea al jugador.
+4. **Segunda conexión:** una conexión adicional durante `EN_JUEGO`/`CONGELADA` se rechaza y bloquea al puesto, para impedir pantallas duplicadas.
+5. **Ausente al iniciar:** los jugadores desconectados en la sala de espera no reciben la partida; quedan bloqueados al pulsar “Iniciar”.
+6. **Tercer fallo:** el servidor bloquea en la misma telemetría que reporta `fails = 3`, aunque el cliente intente seguir.
+7. **Purga:** en online la purga está deshabilitada. Si el cliente la ejecuta por consola, la telemetría reporta `resets > 0` y el servidor bloquea.
+8. **Contadores:** `moves` y `fails` no pueden disminuir; `matched` se conserva monotónicamente. Un descenso se interpreta como reinicio/manipulación.
+9. **Victoria:** `SOLVED` solo se acepta con `matched === 16` y `fails < 3`; una victoria sin matriz completa bloquea.
+10. **Telemetría inválida:** valores negativos, no numéricos, fuera de rango o estados desconocidos bloquean con motivo específico.
+11. **Apagado del servidor:** el cierre del proceso no cuenta como abandono del aprendiz y no bloquea a los conectados.
+
+### 3.2. Condición de carrera corregida
+
+Durante las pruebas se detectó que dos mensajes de telemetría de la misma conexión podían procesarse en paralelo. Una lectura vieja con `0` fallos podía escribirse después de una lectura nueva con `1` fallo y borrar el contador de forma silenciosa. `Hub` ahora mantiene una cola de promesas por conexión: los mensajes se ejecutan en orden estricto y el último estado recibido no puede ser sobrescrito por uno anterior. La prueba de navegador verifica que, tras el bloqueo, el instructor sigue viendo el fallo registrado.
+
+## 4. Experiencia del aprendiz e instructor
+
+- El aprendiz ve `PUESTO BLOQUEADO` con un motivo concreto: salida de pantalla, límite de fallos, telemetría inválida, purga detectada, etc. No se muestra un error genérico.
+- La sesión bloqueada borra el token local y cierra el socket; recargar no devuelve el acceso.
+- El instructor ve la tarjeta en estado `BLOQUEADO`, conserva movimientos/fallos/tiempo y puede leer el motivo en el tooltip y en el texto accesible.
+- Los controles de purga online aparecen deshabilitados y explican que la purga no está disponible en modo sala.
+- La sala de espera mantiene su mensaje de reconexión permitida; el juego activo no.
+
+## 5. Verificación
+
+| Control | Comando / evidencia | Resultado |
+| :--- | :--- | :---: |
+| Tipos frontend | `npm run typecheck` | ✅ 0 errores |
+| Pruebas frontend | `npm test` | ✅ 105/105 |
+| Tipos backend | `npm run typecheck:server` | ✅ 0 errores |
+| Pruebas backend | `npm run test:server` | ✅ 17/17 |
+| Build frontend | `npm run build` | ✅ |
+| Build multipágina | `npm run build:all` | ✅ |
+| Auditoría frontend | `npm audit --omit=dev` | ✅ 0 vulnerabilidades |
+| Auditoría backend | `npm --prefix server audit --omit=dev` | ✅ 0 vulnerabilidades |
+| E2E navegador | Chrome headless + Playwright Core | ✅ Flujo anti-trampa aprobado |
+
+### 5.1. Casos cubiertos por pruebas
+
+- Bloqueo inmediato por desconexión activa y conservación de fallos.
+- Reconexión permitida en sala de espera.
+- Bloqueo del aprendiz ausente al iniciar la ronda.
+- Descalificación automática al tercer fallo.
+- Detección de purga por descenso de contadores.
+- Detección de purga por contador de reseteos aunque los contadores se recuperen.
+- Rechazo de victoria sin matriz completa.
+- Bloqueo por salida de pantalla y por timeout de presencia.
+- Validación de telemetría correcta y rechazo de valores inválidos.
+- E2E WebSocket de recarga durante la partida.
+- E2E de navegador: el instructor ve el fallo antes de recargar; la recarga muestra el bloqueo; el motivo llega al dashboard; el fallo se conserva; el tercer fallo descalifica; cero errores de consola.
+
+## 6. Riesgos residuales
+
+- **Cliente completamente comprometido:** un aprendiz con ejecución total de código puede falsificar telemetría o dibujar una victoria falsa. Las comprobaciones agregadas elevan el costo y detectan las manipulaciones comunes, pero la garantía total exige un acertijo autoritativo en el servidor. Para el alcance de aula, la supervisión del instructor sigue siendo obligatoria.
+- **Trampa física:** copiar, dictar, usar otro dispositivo o comunicación externa no se puede impedir desde el navegador. Es responsabilidad del instructor.
+- **Suplantación:** el ingreso por nombre es control de aula, no autenticación fuerte. La lista de asistencia y la verificación visual siguen siendo necesarias.
+- **Reinicio del backend:** el estado `BLOQUEADO` persiste en MySQL, pero el texto exacto del motivo se conserva solo en memoria; tras reiniciar se muestra un motivo genérico.
+- **Bloqueo por cambio de pestaña:** es intencional y estricto. Un aprendiz que minimiza por una causa legítima pierde el puesto; el instructor puede finalizar o abrir una nueva ronda.
+- **Timeout de presencia:** 20 s es un equilibrio entre detectar abandono y tolerar latencia. Una pausa prolongada de la infraestructura podría bloquear puestos; el motivo queda visible para el docente.
+- **Despliegue:** el sitio y el backend siguen sin publicarse por falta de repositorio, credenciales y hosting.
+- **Cambios sin commit:** la fase queda en el árbol de trabajo, sin push ni despliegue.

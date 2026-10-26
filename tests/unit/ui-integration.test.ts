@@ -60,6 +60,11 @@ function text(id: string): string | null {
 
 describe('Integracion UI (index.html + index.ts)', () => {
   beforeAll(async () => {
+    // La suite valida el modo local histórico. El .env del proyecto puede
+    // definir VITE_API_URL, así que se fuerza cadena vacía antes de importar
+    // el ensamblado (ONLINE_ENABLED se evalúa al cargar el módulo).
+    vi.stubEnv('VITE_API_URL', '');
+
     // Los canvas de happy-dom no traen contexto 2D: se inyecta un doble.
     HTMLCanvasElement.prototype.getContext = vi.fn(() =>
       createContextStub(),

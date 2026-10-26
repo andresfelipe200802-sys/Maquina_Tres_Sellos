@@ -167,6 +167,7 @@ export class MemoryStore implements Store {
       lastSeen: input.now,
       disconnectedAt: null,
       kickedAt: null,
+      blockedReason: null,
       createdAt: input.now,
     };
     this.players.set(player.id, player);

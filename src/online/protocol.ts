@@ -30,6 +30,7 @@ export interface OnlinePlayer {
   timeLeft: number;
   connected: boolean;
   kickedAt: number | null;
+  blockedReason: string | null;
 }
 
 export interface TelemetryPayload {
@@ -38,6 +39,8 @@ export interface TelemetryPayload {
   matched: number;
   timeLeft: number;
   state: string;
+  /** Purga/reseteo local detectado desde el inicio de la muestra. */
+  resets?: number;
 }
 
 export type ConnectionStatus = 'connecting' | 'online' | 'offline';

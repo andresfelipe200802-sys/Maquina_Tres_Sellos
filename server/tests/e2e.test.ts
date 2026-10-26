@@ -198,4 +198,85 @@ describe('E2E HTTP + WebSocket', () => {
     playerSocket.close();
     instructorSocket.close();
   });
+
+  it('bloquea y explica la recarga del aprendiz durante la partida', async () => {
+    const loginResponse = await fetch(`${baseUrl}/api/instructor/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+      body: JSON.stringify({ username: 'instructor', password: 'ClaveE2E123*' }),
+    });
+    const login = (await loginResponse.json()) as { token: string };
+    const authHeaders = {
+      'Content-Type': 'application/json',
+      Origin: ORIGIN,
+      Authorization: `Bearer ${login.token}`,
+    };
+
+    const activeResponse = await fetch(`${baseUrl}/api/instructor/me`, {
+      headers: authHeaders,
+    });
+    const active = (await activeResponse.json()) as {
+      round: { id: number } | null;
+    };
+    if (active.round) {
+      await fetch(`${baseUrl}/api/instructor/rounds/${active.round.id}/finish`, {
+        method: 'POST',
+        headers: authHeaders,
+      });
+    }
+
+    const roundResponse = await fetch(`${baseUrl}/api/instructor/rounds`, {
+      method: 'POST',
+      headers: authHeaders,
+    });
+    const { round } = (await roundResponse.json()) as { round: { id: number } };
+    const joinResponse = await fetch(`${baseUrl}/api/players/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+      body: JSON.stringify({ name: 'Aprendiz Recarga' }),
+    });
+    const joined = (await joinResponse.json()) as { token: string };
+
+    const firstSocket = await openSocket(wsUrl);
+    const authPromise = waitForMessage(firstSocket, (message) => message.type === 'auth.ok');
+    firstSocket.send(
+      JSON.stringify({ type: 'auth', role: 'player', token: joined.token }),
+    );
+    await authPromise;
+
+    const liveState = waitForMessage(
+      firstSocket,
+      (message) => message.type === 'round.state',
+    );
+    await fetch(`${baseUrl}/api/instructor/rounds/${round.id}/start`, {
+      method: 'POST',
+      headers: authHeaders,
+    });
+    await liveState;
+
+    // Simula la recarga: el WebSocket anterior se cierra y el aprendiz
+    // intenta autenticarse de nuevo con el mismo token.
+    firstSocket.close();
+    let status = '';
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      const playerResponse = await fetch(`${baseUrl}/api/players/me`, {
+        headers: { Origin: ORIGIN, Authorization: `Bearer ${joined.token}` },
+      });
+      const player = (await playerResponse.json()) as { player: { status: string } };
+      status = player.player.status;
+      if (status === 'BLOQUEADO') break;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    assert.equal(status, 'BLOQUEADO');
+
+    const secondSocket = await openSocket(wsUrl);
+    const errorPromise = waitForMessage(secondSocket, (message) => message.type === 'error');
+    secondSocket.send(
+      JSON.stringify({ type: 'auth', role: 'player', token: joined.token }),
+    );
+    const error = await errorPromise;
+    assert.equal(error['code'], 'PLAYER_BLOCKED');
+    assert.match(String(error['message']), /saliste de la pantalla/i);
+    secondSocket.close();
+  });
 });

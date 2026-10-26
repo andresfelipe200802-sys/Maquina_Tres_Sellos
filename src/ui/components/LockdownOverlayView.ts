@@ -16,11 +16,17 @@ export class LockdownOverlayView implements IPuzzleObserver {
   private readonly reasonTextElement: HTMLElement | null;
   private readonly purgeButton: HTMLButtonElement | null;
   private readonly puzzle: WaterSamplePuzzle;
+  private readonly allowPurge: boolean;
   private lockReason: 'attempts' | 'timeout' = 'attempts';
 
-  public constructor(overlayElement: HTMLElement, puzzle: WaterSamplePuzzle) {
+  public constructor(
+    overlayElement: HTMLElement,
+    puzzle: WaterSamplePuzzle,
+    options: { allowPurge?: boolean } = {},
+  ) {
     this.overlayElement = overlayElement;
     this.puzzle = puzzle;
+    this.allowPurge = options.allowPurge ?? true;
     this.reasonTextElement = overlayElement.querySelector<HTMLElement>('#lockdown-reason-text');
     this.purgeButton = overlayElement.querySelector<HTMLButtonElement>('#btn-lockdown-purge');
 
@@ -62,6 +68,7 @@ export class LockdownOverlayView implements IPuzzleObserver {
 
   private bindPurgeAction(): void {
     this.purgeButton?.addEventListener('click', () => {
+      if (!this.allowPurge) return;
       this.puzzle.reset();
     });
   }

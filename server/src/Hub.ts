@@ -3,7 +3,7 @@ import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer, type RawData } from 'ws';
 import type { ServerConfig } from './config.js';
 import { isAppError } from './errors.js';
-import type { RoundEvents, RoundService } from './RoundService.js';
+import { BLOCK_REASONS, type RoundEvents, type RoundService } from './RoundService.js';
 import type { Player, PublicPlayer, PublicRound, Round } from './types.js';
 
 type Role = 'instructor' | 'player';
@@ -38,6 +38,8 @@ export class Hub implements RoundEvents {
   private readonly instructorSockets = new Set<ClientConnection>();
   private readonly heartbeat: NodeJS.Timeout;
   private snapshotTimer: NodeJS.Timeout | null = null;
+  private readonly messageQueues = new WeakMap<ClientConnection, Promise<void>>();
+  private closing = false;
 
   public constructor(
     private readonly server: HttpServer,
@@ -53,6 +55,7 @@ export class Hub implements RoundEvents {
   }
 
   public close(): void {
+    this.closing = true;
     clearInterval(this.heartbeat);
     if (this.snapshotTimer) clearTimeout(this.snapshotTimer);
     for (const connection of this.connections) {
@@ -131,7 +134,20 @@ export class Hub implements RoundEvents {
       connection.alive = true;
     });
     socket.on('message', (data) => {
-      void this.handleMessage(connection, data);
+      // Los mensajes de una misma conexión se procesan en orden. Sin esta
+      // cola, dos telemetrías concurrentes podían leer el mismo contador y la
+      // más vieja sobrescribir a la nueva (pérdida silenciosa de fallos).
+      const previous = this.messageQueues.get(connection) ?? Promise.resolve();
+      const next = previous
+        .then(
+          () => this.handleMessage(connection, data),
+          () => this.handleMessage(connection, data),
+        )
+        .catch((error: unknown) => {
+          console.error('[ws] error procesando mensaje:', error);
+          this.sendError(connection.socket, 'INTERNAL_ERROR', 'Error interno del servidor.');
+        });
+      this.messageQueues.set(connection, next);
     });
     socket.on('close', () => {
       clearTimeout(connection.authTimer);
@@ -142,7 +158,11 @@ export class Hub implements RoundEvents {
         set?.delete(connection);
         if (set && set.size === 0) {
           this.playerSockets.delete(connection.playerId);
-          if (connection.playerId) void this.service.markDisconnected(connection.playerId);
+          if (connection.playerId && !this.closing) {
+            void this.service.markDisconnected(connection.playerId).catch((error: unknown) => {
+              console.error('[ws] no se pudo registrar la desconexión:', error);
+            });
+          }
         }
       }
     });
@@ -196,9 +216,21 @@ export class Hub implements RoundEvents {
           matched: Number(telemetry['matched'] ?? 0),
           timeLeft: Number(telemetry['timeLeft'] ?? 0),
           state: String(telemetry['state'] ?? 'DESCONOCIDO'),
+          resets: Number(telemetry['resets'] ?? 0),
         });
       } catch (error) {
         this.handleServiceError(connection, error);
+      }
+      return;
+    }
+
+    if (connection.role === 'player' && message.type === 'presence') {
+      if (message['hidden'] === true && connection.playerToken) {
+        try {
+          await this.service.reportScreenExit(connection.playerToken);
+        } catch (error) {
+          this.handleServiceError(connection, error);
+        }
       }
       return;
     }
@@ -244,14 +276,46 @@ export class Hub implements RoundEvents {
       }
 
       const state = await this.service.markConnected(token);
+      const previousSockets = this.playerSockets.get(state.player.id);
+      const isLive = state.round.status === 'EN_JUEGO' || state.round.status === 'CONGELADA';
+
+      // Durante la partida solo puede existir una pantalla por aprendiz. Si
+      // llega una segunda conexión (otra pestaña o una recarga que se adelantó
+      // al cierre de la anterior), se bloquea el puesto de inmediato.
+      if (isLive && previousSockets && previousSockets.size > 0) {
+        await this.service.blockPlayer(
+          state.player.id,
+          BLOCK_REASONS.DUPLICATE_SESSION,
+          { codigo: 'SESION_DUPLICADA' },
+        );
+        this.sendError(connection.socket, 'PLAYER_BLOCKED', BLOCK_REASONS.DUPLICATE_SESSION);
+        connection.socket.close(4403, 'PLAYER_BLOCKED');
+        return;
+      }
+
       connection.role = 'player';
       connection.playerToken = token;
       connection.playerId = state.player.id;
       connection.roundId = state.round.id;
       clearTimeout(connection.authTimer);
-      const set = this.playerSockets.get(state.player.id) ?? new Set<ClientConnection>();
+      const set = previousSockets ?? new Set<ClientConnection>();
       set.add(connection);
       this.playerSockets.set(state.player.id, set);
+
+      // En la sala de espera una nueva pestaña reemplaza a la anterior sin
+      // bloquear; al añadir primero la nueva, el cierre de la vieja no dispara
+      // una desconexión del jugador.
+      for (const previous of previousSockets ?? []) {
+        if (previous === connection) continue;
+        this.send(previous.socket, {
+          type: 'player.superseded',
+          reason:
+            'Esta pestaña fue reemplazada por otra conexión del mismo aprendiz. Solo la pestaña más reciente permanece activa.',
+          serverNow: Date.now(),
+        });
+        previous.socket.close(4000, 'Sesión reemplazada');
+      }
+
       this.send(connection.socket, {
         type: 'auth.ok',
         role: 'player',
@@ -366,6 +430,7 @@ function toClientPlayer(player: Player): PublicPlayer {
       player.status !== 'EXPULSADO' &&
       player.status !== 'BLOQUEADO',
     kickedAt: player.kickedAt,
+    blockedReason: player.blockedReason,
   };
 }
 

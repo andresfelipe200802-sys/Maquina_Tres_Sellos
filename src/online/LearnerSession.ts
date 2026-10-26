@@ -111,6 +111,12 @@ export class LearnerSession {
     this.socket.send(JSON.stringify({ type: 'telemetry', telemetry: payload }));
   }
 
+  /** Avisa al servidor que la pestaña perdió visibilidad o se está cerrando. */
+  public reportScreenExit(): void {
+    if (this.socket?.readyState !== WebSocket.OPEN) return;
+    this.socket.send(JSON.stringify({ type: 'presence', hidden: true }));
+  }
+
   public disconnect(clear = false): void {
     this.closedByUser = true;
     this.clearReconnect();
@@ -179,6 +185,13 @@ export class LearnerSession {
         this.endLocally(
           'kicked',
           message.reason ?? 'El instructor retiró tu acceso a esta ronda.',
+        );
+        break;
+      case 'player.superseded':
+        this.endLocally(
+          'blocked',
+          message.reason ??
+            'Esta pestaña fue reemplazada por otra conexión del mismo aprendiz.',
         );
         break;
       case 'error':

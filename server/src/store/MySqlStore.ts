@@ -107,6 +107,7 @@ function mapPlayer(row: PlayerRow): Player {
     lastSeen: ms(row.ultimo_latido),
     disconnectedAt: ms(row.desconectado_en),
     kickedAt: ms(row.expulsado_en),
+    blockedReason: null,
     createdAt: row.creado_en.getTime(),
   };
 }
@@ -372,6 +373,7 @@ export class MySqlStore implements Store {
         lastSeen: input.now,
         disconnectedAt: null,
         kickedAt: null,
+        blockedReason: null,
         createdAt: input.now,
       };
     } catch (error) {
