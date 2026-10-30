@@ -1420,5 +1420,136 @@ Durante las pruebas se detectó que dos mensajes de telemetría de la misma cone
 - **Reinicio del backend:** el estado `BLOQUEADO` persiste en MySQL, pero el texto exacto del motivo se conserva solo en memoria; tras reiniciar se muestra un motivo genérico.
 - **Bloqueo por cambio de pestaña:** es intencional y estricto. Un aprendiz que minimiza por una causa legítima pierde el puesto; el instructor puede finalizar o abrir una nueva ronda.
 - **Timeout de presencia:** 20 s es un equilibrio entre detectar abandono y tolerar latencia. Una pausa prolongada de la infraestructura podría bloquear puestos; el motivo queda visible para el docente.
-- **Despliegue:** el sitio y el backend siguen sin publicarse por falta de repositorio, credenciales y hosting.
-- **Cambios sin commit:** la fase queda en el árbol de trabajo, sin push ni despliegue.
+- **Despliegue:** el frontend sí está publicado en GitHub Pages. El backend no reside en la nube: se expone desde la PC con el túnel de Cloudflare de la Fase 6.3, por lo que la sala solo funciona con esa PC encendida y con la variable `VITE_API_URL` configurada en GitHub.
+- **Cambios sin commit:** los archivos de la Fase 6.2 fueron confirmados en `3ccc55f`; los de la Fase 6.3 (`iniciar-sala.ps1` e `iniciar-sala.bat`) quedan en el árbol de trabajo, sin push.
+
+---
+
+# Fase 6.3. Despliegue sin hosting: túnel de Cloudflare desde la PC
+
+## Contexto y decisión
+
+GitHub Pages sirve únicamente archivos estáticos. `Deploy from a branch` y `GitHub Actions` solo cambian cómo se compilan y entregan `HTML`, `JS` y `CSS`; ninguno de los dos ejecuta el backend Node/WebSocket de la sala. Por eso el link de Pages muestra el juego pero no arranca la sala completa: el HTML de la sala de espera y el del panel del instructor se publican, pero no hay servidor al que hablar.
+
+Tampoco es una regresión del repositorio: en el juego anterior el backend y la base de datos eran **Firebase** (de ahí la sensación de que "funcionaba sin nada" desde Pages), y en este repositorio el backend siempre corrió en la PC con `npm --prefix server run dev`. Se descartó subir el backend a un servicio en la nube (Render u otro equivalente).
+
+La opción elegida es exponer el backend local con **Cloudflare Tunnel** (`cloudflared`):
+
+| Propiedad | Resultado |
+| :--- | :--- |
+| Backend y datos | Permanecen en la PC; no se publica código de servidor en ningún proveedor |
+| Transporte | HTTPS público en un subdominio efímero `*.trycloudflare.com` |
+| Puertos del router | Ninguno abierto: `cloudflared` solo inicia conexiones salientes |
+| Costo | Gratuito, sin cuenta de Cloudflare |
+| Link de Pages | Se mantiene idéntico para los estudiantes |
+
+## Archivos añadidos
+
+| Archivo | Propósito |
+| :--- | :--- |
+| `iniciar-sala.ps1` | Arranca el backend, fija CORS hacia Pages, abre el túnel, copia la URL al portapapeles e imprime los pasos de GitHub |
+| `iniciar-sala.bat` | Lanzador de doble clic que invoca el script anterior con política de ejecución `Bypass` |
+
+Requisito único de software: `cloudflared` (instalado en esta PC con `winget install --id Cloudflare.cloudflared -e`).
+
+## Uso
+
+1. Doble clic en `iniciar-sala.bat` (o `.\iniciar-sala.ps1` desde PowerShell).
+2. El script valida Node/npm/`cloudflared`, avisa si el puerto está ocupado y si `server/.env` aún usa la contraseña de ejemplo.
+3. Arranca el backend y espera su `/health`.
+4. Abre el túnel, extrae la URL `trycloudflare.com` y la copia al portapapeles.
+5. Imprime los pasos de GitHub. La ventana debe permanecer abierta: al presionar ENTER se detienen backend y túnel.
+
+### Parámetros
+
+| Parámetro | Defecto | Efecto |
+| :--- | :--- | :--- |
+| `-Puerto` | `3001` | Puerto local del backend |
+| `-OrigenPages` | `https://andresfelipe200802-sys.github.io` | Origen CORS permitido (más `localhost:5173` y `localhost:4173`) |
+| `-Memoria` | apagado | Fuerza almacenamiento en memoria; no necesita MySQL |
+| `-Probar` | apagado | Tras abrir el túnel, verifica `GET /health` por HTTPS externo y el encabezado CORS con el origen de Pages, y se detiene solo al terminar |
+
+## Configuración manual en GitHub (primera vez y cada cambio de URL)
+
+1. **Settings → Secrets and variables → Actions → Variables → New repository variable**
+   - Name: `VITE_API_URL`
+   - Value: la URL `https://....trycloudflare.com` que imprime el script (está en el portapapeles).
+2. **Actions → `Publicar frontend en GitHub Pages` → Run workflow** sobre `main` (o simplemente esperar al siguiente push).
+3. Abrir en el celular, en modo incógnito: `https://andresfelipe200802-sys.github.io/Maquina_Tres_Sellos/`
+4. Panel del instructor: `https://andresfelipe200802-sys.github.io/Maquina_Tres_Sellos/instructor/`
+
+Si la variable aún no existe, el build publica el frontend en modo local (sin sala), que es exactamente el estado que se observó en Pages antes de esta fase.
+
+## Verificación ejecutada
+
+| Comprobación | Evidencia | Resultado |
+| :--- | :--- | :--- |
+| Túnel real con `trycloudflare.com` | Varias corridas de `iniciar-sala.ps1 -Puerto 3002 -Memoria -Probar` | ✅ URL pública emitida |
+| Acceso externo por HTTPS | `GET https://<túnel>/health` desde fuera de la máquina | ✅ `200 OK` con `storage":"memory"` |
+| CORS hacia Pages | Misma petición con cabecera `Origin: https://andresfelipe200802-sys.github.io` | ✅ `Access-Control-Allow-Origin` devuelve el origen exacto de Pages |
+| Propagación DNS | Medición con consultas por tipo (`A`/`AAAA`) y purga de caché | ✅ Resuelve en ~10–60 s; el registro `A` (IPv4) es el que habilita la petición en esta red |
+| Modo memoria | Servidor informa `Almacenamiento: memoria (desarrollo)` sin MySQL | ✅ |
+| Cierre limpio | Salida final `Servicios detenidos.` con código de salida 0 | ✅ |
+| Sin residuos | Cero procesos `cloudflared`/`node` y cero archivos `sena-tunnel.*` tras salir | ✅ |
+| Parseo del script | `PSParser`: 0 errores, con BOM UTF-8 | ✅ |
+
+### Correcciones aplicadas durante las pruebas
+
+1. **`$env:TEMP` en formato 8.3** (`C:\Users\NOMBR~1\...`): `Remove-Item` falla con esa ruta aunque `Test-Path` la acepte; el script normaliza a nombre largo con `(Get-Item -LiteralPath $env:TEMP).FullName`.
+2. **stdin compartido:** `tsx watch` se reinicia con la tecla ENTER, y `Start-Process -RedirectStandardInput` sobre el mismo archivo para dos procesos provoca un bloqueo; solo el backend redirige stdin a un archivo vacío.
+3. **DNS efímero:** el primer fallo deja caché negativa que envenena los reintentos, y el subdominio a veces publica primero `AAAA` que `A`; la auto-prueba purga la caché con `Clear-DnsClientCache` en cada intento y tolera hasta 2 minutos.
+4. **`-Memoria` ignorado:** dotenv no pisa variables definidas; se fija `DATABASE_URL` a un espacio en blanco para que el servidor la interprete como vacía y use memoria.
+
+### Endurecimiento de seguridad (29-10-2026)
+
+**Pregunta que motivó la auditoría:** con el túnel abierto, ¿puede alguien entrar a la PC y extraer información? El túnel solo reenvía la API del juego del puerto 3001 (no archivos, ni escritorio, ni otros servicios), pero la auditoría encontró puntos flojos que sí permitían impacto desde internet o desde la red local del salón. Todos fueron corregidos.
+
+**Hallazgos antes de corregir:**
+
+| Hallazgo | Riesgo real |
+| :--- | :--- |
+| `server.listen(puerto)` sin host → escuchaba en todas las interfaces | Un compañero del salón podía entrar directo a `http://TU_IP:3001` saltándose el túnel |
+| `NODE_ENV=development` → sin `trust proxy` | Todas las peticiones del túnel parecían venir de `127.0.0.1`; los límites (10 intentos de login / 15 min, 3000 peticiones / min) valían como **una sola bolsa global** que cualquiera podía agotar para dejar a todos sin panel |
+| WebSocket sin tope de conexiones | Miles de sockets simultáneos sin autenticar (agotar recursos de la PC) |
+| `ws` emite `'error'` sin suscriptor ante frames malformados o cortes abruptos | Excepción no capturada → **caída remota del servidor en plena clase** |
+| `/health` sin límite de tasa (queda fuera del prefijo `/api/`) | Saturación del único endpoint siempre disponible |
+| MySQL de Windows escuchando en `::` (todas las interfaces) | Con la red en categoría Privada, cualquiera en el Wi-Fi podía conectarse con `root` |
+
+**Correcciones aplicadas:**
+
+| Archivo | Cambio |
+| :--- | :--- |
+| `server/src/config.ts` | Nuevo campo `host` (variable `HOST`, por defecto `127.0.0.1`) |
+| `server/src/index.ts` | `server.listen(puerto, host)` y log del alcance (`solo esta PC (127.0.0.1)`) |
+| `server/src/app.ts` | `/health` queda bajo el mismo limitador global que `/api/` |
+| `server/src/Hub.ts` | Tope de conexiones (`maxPlayers*2+10`, rechazo con HTTP 503) y manejadores de `'error'` en el socket crudo del upgrade, en cada WebSocket y en el servidor WS: sin ellos, el primer error de red/protocolo tumba el proceso |
+| `server/.env` | `NODE_ENV=production` (activa `trust proxy`, con el que los límites se aplican por IP real vía `X-Forwarded-For`, y exige credenciales explícitas) y `HOST=127.0.0.1` |
+| `server/.env.example` | Documenta `HOST` y el efecto de `NODE_ENV=production` |
+| `C:\ProgramData\MySQL\MySQL Server 9.7\my.ini` | `bind-address=127.0.0.1` y `mysqlx_bind_address=127.0.0.1` (respaldo `my.ini.bak-seguridad-20261029`; requirió elevación UAC; servicio `MySQL97` reiniciado) |
+| `iniciar-sala.ps1` | Salud y túnel apuntan a `http://127.0.0.1:$Puerto` (evita que `localhost` resuelva a `::1`, que ya nadie atiende) y el fallo final muestra el detalle del último error |
+
+Con `trust proxy` activo y el backend solo accesible desde loopback, las cadenas `X-Forwarded-For` no se pueden falsear desde fuera (solo `cloudflared` puede conectar) y el atacante solo consume su propio cupo de intentos, no el del profesor.
+
+**Verificación:**
+
+| Comprobación | Evidencia | Resultado |
+| :--- | :--- | :--- |
+| Bind solo loopback | Backend efímero en 3005: `127.0.0.1:3005` → `200` con `storage":"mysql"`; `192.168.18.247:3005` → rechazada | ✅ |
+| MySQL en loopback | `3306` y `33060` escuchan solo en `127.0.0.1`; servicio `Running` | ✅ |
+| E2E completa `iniciar-sala.ps1 -Probar` (con MySQL) | Log `solo esta PC (127.0.0.1)`, `Almacenamiento: MySQL 8`, `GET /health → 200 OK` por el túnel público, CORS aceptado, cierre limpio | ✅ |
+| `npm run typecheck:server` / `npm run test:server` | Sin errores; 17/17 pruebas | ✅ |
+
+**Riesgos residuales:**
+
+- **PostgreSQL (5432)** sigue escuchando en todas las interfaces: no pertenece al juego y no se tocó. El firewall (perfil Público activo) lo bloquea desde la red, pero si la red llegara a marcarse Privada quedaría visible. Si no lo usas, detén el servicio; si lo usas, añade `bind_address = '127.0.0.1'` en su `postgresql.conf`.
+- **SMB (445), RPC (135) y servicios de Windows** escuchan en todas las interfaces, pero el firewall está activo en los tres perfiles y la red actual es **Pública** (entrada no solicitada bloqueada). Al conectar una red nueva en el salón, mantén la categoría **Pública**.
+- **La URL del túnel no es un secreto:** los alumnos la ven compilada en el JS del juego (por diseño). Las protecciones reales son la contraseña personalizada del instructor, el límite de 10 intentos de login cada 15 minutos por IP y toda la validación del servidor.
+- La exposición solo existe mientras el script corre: con ENTER en la ventana, la PC vuelve a ser invisible para internet.
+
+
+
+- **La PC debe permanecer encendida y con la ventana del script abierta** durante toda la clase; al cerrarla mueren backend y túnel.
+- **La URL cambia en cada reinicio** del script: hay que actualizar `VITE_API_URL` y re-ejecutar el workflow de Pages (los estudiantes deben recargar con caché limpiada si aún ven el modo local).
+- **`INSTRUCTOR_PASSWORD`** en `server/.env` ya fue cambiada a una clave personal: no la repitas en ningún documento ni pantalla, y no la subas a git. Si se filtrara, cámbiala (el nuevo valor rige desde el próximo inicio del script).
+- El estado en memoria (`-Memoria`) se pierde al detener el script; sin ese parámetro se usa MySQL local.
+- Es una solución de aula/presentación, no de alta disponibilidad: depende de la red local, del consumo de la PC y de la gratuidad del túnel efímero de Cloudflare.

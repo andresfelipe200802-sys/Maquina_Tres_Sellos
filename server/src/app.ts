@@ -81,6 +81,9 @@ export function createApp(service: RoundService, config: ServerConfig): AppBundl
     handler: rateLimitHandler,
   });
   app.use('/api/', globalLimiter);
+  // /health queda fuera de /api/: se limita también para que nadie lo sature
+  // desde el túnel (el script de auto-prueba solo lo consulta un par de veces).
+  app.use('/health', globalLimiter);
 
   const requireInstructor: RequestHandler = (request, response, next) => {
     const header = request.headers.authorization;

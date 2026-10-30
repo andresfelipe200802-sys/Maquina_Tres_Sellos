@@ -1,5 +1,6 @@
 export interface ServerConfig {
   port: number;
+  host: string;
   clientOrigins: string[];
   instructorUser: string;
   instructorPassword: string;
@@ -23,6 +24,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 
   return {
     port: Number(env['PORT'] ?? 3001),
+    // Solo esta PC por defecto: el tráfico entra únicamente por el túnel.
+    // '0.0.0.0' expondría el puerto a toda la red local (modo Wi-Fi del aula).
+    host: env['HOST']?.trim() || '127.0.0.1',
     clientOrigins: (env['CLIENT_ORIGINS'] ?? 'http://localhost:5173,http://localhost:4173')
       .split(',')
       .map((origin) => origin.trim())

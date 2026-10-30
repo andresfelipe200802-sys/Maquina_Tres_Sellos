@@ -27,8 +27,12 @@ async function main(): Promise<void> {
   }, 2_000);
   ticker.unref?.();
 
-  server.listen(config.port, () => {
-    console.log(`[server] API en http://localhost:${config.port}`);
+  server.listen(config.port, config.host, () => {
+    const alcance =
+      config.host === '127.0.0.1' || config.host === 'localhost'
+        ? 'solo esta PC (127.0.0.1)'
+        : `red local (${config.host})`;
+    console.log(`[server] API en http://localhost:${config.port} · ${alcance}`);
     console.log(`[server] Almacenamiento: ${config.databaseUrl ? 'MySQL 8' : 'memoria (desarrollo)'}`);
     console.log(`[server] Orígenes CORS: ${config.clientOrigins.join(', ')}`);
     if (!config.databaseUrl) {

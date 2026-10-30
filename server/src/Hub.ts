@@ -47,6 +47,10 @@ export class Hub implements RoundEvents {
     private readonly config: ServerConfig,
   ) {
     this.wss = new WebSocketServer({ noServer: true, maxPayload: MAX_MESSAGE_BYTES });
+    // Sin suscriptor, un 'error' del servidor tiraría el proceso completo.
+    this.wss.on('error', (error: unknown) => {
+      console.error('[ws] error del servidor WebSocket:', error);
+    });
     server.on('upgrade', (request, socket, head) => this.handleUpgrade(request, socket, head));
     this.wss.on('connection', (socket) => this.handleConnection(socket));
     this.heartbeat = setInterval(() => this.pingAll(), 30_000);
@@ -97,7 +101,19 @@ export class Hub implements RoundEvents {
     }
   }
 
+  /**
+   * Tope de sockets simultáneos: 2 por puesto (reconexiones durante el
+   * período de gracia) más margen para el instructor. Sin este tope, alguien
+   * con la URL podría abrir miles de sockets sin autenticar y tumbar la PC.
+   */
+  private maxConnections(): number {
+    return this.config.maxPlayers * 2 + 10;
+  }
+
   private handleUpgrade(request: IncomingMessage, socket: Duplex, head: Buffer): void {
+    // El cliente puede cortar la conexión en cualquier instante: sin este
+    // manejador, un 'error' sin suscriptor en el socket crudo tumba el proceso.
+    socket.on('error', () => undefined);
     const url = new URL(request.url ?? '/', 'http://localhost');
     if (url.pathname !== '/ws') {
       socket.destroy();
@@ -109,12 +125,20 @@ export class Hub implements RoundEvents {
       socket.destroy();
       return;
     }
+    if (this.connections.size >= this.maxConnections()) {
+      socket.write('HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n');
+      socket.destroy();
+      return;
+    }
     this.wss.handleUpgrade(request, socket, head, (webSocket) => {
       this.wss.emit('connection', webSocket, request);
     });
   }
 
   private handleConnection(socket: WebSocket): void {
+    // 'error' sin suscriptor = excepción no capturada = servidor fuera en plena
+    // clase (frames malformados o corte de red del cliente).
+    socket.on('error', () => undefined);
     const connection: ClientConnection = {
       socket,
       role: null,
