@@ -23,6 +23,15 @@ export class RowCarouselView implements IPuzzleObserver {
   private readonly blockView: IBlockView;
   private currentStateName = 'STANDBY';
 
+  /** Tamano logico en pixeles CSS (el contexto ya esta escalado por DPR). */
+  private get viewWidth(): number {
+    return this.canvas.clientWidth > 0 ? this.canvas.clientWidth : this.canvas.width;
+  }
+
+  private get viewHeight(): number {
+    return this.canvas.clientHeight > 0 ? this.canvas.clientHeight : this.canvas.height;
+  }
+
   /** Etiquetas de fila resueltas por indice (sin bifurcaciones). */
   private static readonly ROW_LABELS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
 
@@ -57,19 +66,21 @@ export class RowCarouselView implements IPuzzleObserver {
   }
 
   public paint(): void {
-    const { ctx, canvas, rows, blockView } = this;
+    const { ctx, rows, blockView } = this;
+    const width = this.viewWidth;
+    const height = this.viewHeight;
     const rowCount = rows.length;
     const columns = rows[0]?.length ?? 0;
-    const rowHeight = canvas.height / rowCount;
+    const rowHeight = height / rowCount;
     const labelAreaWidth = 44; // Ancho dedicado a la placa de canal
-    const cellWidth = (canvas.width - labelAreaWidth) / columns;
+    const cellWidth = (width - labelAreaWidth) / columns;
     const isLocked = this.currentStateName === 'LOCKED';
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, width, height);
 
     // Fondo hundido del panel de tambores
     ctx.fillStyle = '#030a06';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, width, height);
 
     // Guías verticales de columnas tenues para alineación continua
     ctx.strokeStyle = 'rgba(0, 200, 90, 0.05)';
@@ -78,7 +89,7 @@ export class RowCarouselView implements IPuzzleObserver {
       const colX = labelAreaWidth + c * cellWidth;
       ctx.beginPath();
       ctx.moveTo(colX, 0);
-      ctx.lineTo(colX, canvas.height);
+      ctx.lineTo(colX, height);
       ctx.stroke();
     }
 
@@ -89,7 +100,7 @@ export class RowCarouselView implements IPuzzleObserver {
 
       // Franja horizontal de identidad de canal (borde sutil coloreado)
       ctx.fillStyle = isLocked ? 'rgba(30, 8, 8, 0.08)' : palette.dim;
-      ctx.fillRect(labelAreaWidth, yBase, canvas.width - labelAreaWidth, rowHeight);
+      ctx.fillRect(labelAreaWidth, yBase, width - labelAreaWidth, rowHeight);
 
       // Placa de canal metálica izquierda
       ctx.fillStyle = isLocked ? 'rgba(30, 8, 8, 0.7)' : 'rgba(0, 20, 10, 0.75)';
@@ -115,7 +126,7 @@ export class RowCarouselView implements IPuzzleObserver {
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(0, yBase + rowHeight);
-        ctx.lineTo(canvas.width, yBase + rowHeight);
+        ctx.lineTo(width, yBase + rowHeight);
         ctx.stroke();
       }
 
@@ -147,11 +158,11 @@ export class RowCarouselView implements IPuzzleObserver {
     // Indicador sutil de bloqueo en canvas (el mensaje principal se presenta a pantalla completa en 3D)
     if (isLocked) {
       ctx.fillStyle = 'rgba(25, 4, 4, 0.75)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, width, height);
       ctx.fillStyle = 'rgba(255, 59, 48, 0.6)';
       ctx.font = 'bold 11px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('⚡ TERMINAL ENCLAVADA — PROTOCOLO DE SEGURIDAD ACTIVO ⚡', canvas.width / 2, canvas.height / 2);
+      ctx.fillText('⚡ TERMINAL ENCLAVADA — PROTOCOLO DE SEGURIDAD ACTIVO ⚡', width / 2, height / 2);
       ctx.textAlign = 'start';
     }
   }

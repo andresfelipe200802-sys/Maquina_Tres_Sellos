@@ -556,10 +556,12 @@ function handleOnlineError(error: ApiError): void {
 
 function setCanvasResolution(canvas: HTMLCanvasElement): void {
   const rect = canvas.getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  // Reserva de pixeles fisicos: mantiene nitidez en pantallas retina.
+  canvas.width = Math.max(1, Math.round(rect.width * dpr));
+  canvas.height = Math.max(1, Math.round(rect.height * dpr));
   const ctx = canvas.getContext('2d');
+  // Las vistas dibujan en pixeles CSS; el contexto escala a la densidad real.
   if (ctx !== null) ctx.scale(dpr, dpr);
 }
 

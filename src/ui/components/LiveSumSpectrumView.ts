@@ -22,6 +22,15 @@ export class LiveSumSpectrumView implements IPuzzleObserver {
   private currentSum: readonly number[] = [];
   private currentStateName = 'STANDBY';
 
+  /** Tamano logico en pixeles CSS (el contexto ya esta escalado por DPR). */
+  private get viewWidth(): number {
+    return this.canvas.clientWidth > 0 ? this.canvas.clientWidth : this.canvas.width;
+  }
+
+  private get viewHeight(): number {
+    return this.canvas.clientHeight > 0 ? this.canvas.clientHeight : this.canvas.height;
+  }
+
   public constructor(canvas: HTMLCanvasElement, targetHeights: readonly number[]) {
     this.canvas = canvas;
     const ctx = canvas.getContext('2d');
@@ -42,27 +51,30 @@ export class LiveSumSpectrumView implements IPuzzleObserver {
   }
 
   private paint(): void {
-    const { ctx, canvas, currentSum, targetHeights } = this;
+    const { ctx, currentSum, targetHeights } = this;
+    const width = this.viewWidth;
+    const height = this.viewHeight;
     const columns = Math.max(currentSum.length, targetHeights.length, 1);
     const maxHeight = Math.max(...targetHeights, ...currentSum, 1);
-    const columnWidth = canvas.width / columns;
+    const columnWidth = width / columns;
     const isSolved = this.currentStateName === 'SOLVED';
-    const usableHeight = canvas.height - 24;
+    const usableHeight = height - 24;
+    const compact = width < 480;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, width, height);
 
     // Fondo hundido del osciloscopio
     ctx.fillStyle = '#030a06';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, width, height);
 
     // Retícula analógica horizontal de niveles de suma
     ctx.strokeStyle = 'rgba(0, 212, 255, 0.08)';
     ctx.lineWidth = 1;
     for (let level = 1; level <= 4; level++) {
-      const lineY = canvas.height - (level / 4) * usableHeight;
+      const lineY = height - (level / 4) * usableHeight;
       ctx.beginPath();
       ctx.moveTo(0, lineY);
-      ctx.lineTo(canvas.width, lineY);
+      ctx.lineTo(width, lineY);
       ctx.stroke();
     }
 
@@ -72,7 +84,7 @@ export class LiveSumSpectrumView implements IPuzzleObserver {
       const lineX = col * columnWidth;
       ctx.beginPath();
       ctx.moveTo(lineX, 18);
-      ctx.lineTo(lineX, canvas.height);
+      ctx.lineTo(lineX, height);
       ctx.stroke();
     }
 
@@ -81,7 +93,7 @@ export class LiveSumSpectrumView implements IPuzzleObserver {
       if (h <= 0) return;
       const barHeight = (h / maxHeight) * usableHeight;
       const x = i * columnWidth;
-      const y = canvas.height - barHeight;
+      const y = height - barHeight;
 
       ctx.fillStyle = 'rgba(0, 212, 255, 0.10)';
       ctx.fillRect(x + 2, y, columnWidth - 4, barHeight);
@@ -102,7 +114,7 @@ export class LiveSumSpectrumView implements IPuzzleObserver {
 
       const barHeight = (h / maxHeight) * usableHeight;
       const x = i * columnWidth;
-      const y = canvas.height - barHeight;
+      const y = height - barHeight;
 
       // Color monocromático misterioso idéntico a SAMPLE (azul cian analítico)
       // Sin delatar con verde o rojo cada columna individual.
@@ -129,10 +141,14 @@ export class LiveSumSpectrumView implements IPuzzleObserver {
       ctx.strokeRect(x + 4.5, y + 0.5, columnWidth - 9, barHeight - 1);
     });
 
-    // Etiqueta técnica diegética
+    // Etiqueta técnica diegética (se abrevia en pantallas estrechas)
     ctx.fillStyle = isSolved ? '#00ffcc' : '#00d4ff';
     ctx.font = 'bold 10px monospace';
-    ctx.fillText('ESPECTRO DE SUMA EN VIVO // CANAL Σ [MEZCLA]', 8, 13);
+    ctx.fillText(
+      compact ? 'SUMA EN VIVO // Σ' : 'ESPECTRO DE SUMA EN VIVO // CANAL Σ [MEZCLA]',
+      8,
+      13,
+    );
 
     // Contador de coincidencia de columnas (preservado para dar feedback global de progreso)
     ctx.fillStyle = isSolved
@@ -142,7 +158,11 @@ export class LiveSumSpectrumView implements IPuzzleObserver {
         : 'rgba(0, 212, 255, 0.85)';
     ctx.font = '9px monospace';
     ctx.textAlign = 'right';
-    ctx.fillText(`COINCIDENCIA: ${matchCount}/${columns} COL`, canvas.width - 8, 13);
+    ctx.fillText(
+      compact ? `${matchCount}/${columns} COL` : `COINCIDENCIA: ${matchCount}/${columns} COL`,
+      width - 8,
+      13,
+    );
     ctx.textAlign = 'start';
   }
 }

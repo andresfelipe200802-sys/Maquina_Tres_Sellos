@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Sintetizador de Calibración de Muestra de Agua - Acertijo industrial inspirado en Resident Evil 3." />
+  <meta name="theme-color" content="#030a08" />
   <title>Sintetizador de Calibración de Muestra de Agua</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23030805'/%3E%3Cpath d='M16 4c4.5 6.8 8.5 11 8.5 16a8.5 8.5 0 0 1-17 0C7.5 15 11.5 10.8 16 4z' fill='%2300d4ff'/%3E%3C/svg%3E" />
 </head>
 <body>
@@ -345,6 +348,65 @@
           salir o cambiar de pestaña bloqueará tu puesto de inmediato.
         </p>
       </div>
+
+      <aside class="waiting-room__rules" aria-labelledby="waiting-rules-title">
+        <div class="waiting-room__rules-head">
+          <span class="waiting-room__rules-tag">PROTOCOLO DE PERMANENCIA</span>
+          <h3 class="waiting-room__rules-title" id="waiting-rules-title">
+            Lo que no debes hacer
+          </h3>
+        </div>
+
+        <ul class="waiting-room__rules-list">
+          <li>
+            <span class="waiting-room__rule-index" aria-hidden="true">01</span>
+            <p>
+              <strong>No recargues, cierres ni cambies de pestaña durante la partida.</strong>
+              En la sala de espera tienes unos segundos para reconectar; durante
+              la partida, salir, minimizar o perder visibilidad bloquea tu puesto
+              de inmediato.
+            </p>
+          </li>
+          <li>
+            <span class="waiting-room__rule-index" aria-hidden="true">02</span>
+            <p>
+              <strong>No abras tu sesión en otra pestaña o equipo.</strong>
+              Solo se permite una pantalla por aprendiz; una conexión duplicada
+              durante la partida bloquea el puesto.
+            </p>
+          </li>
+          <li>
+            <span class="waiting-room__rule-index" aria-hidden="true">03</span>
+            <p>
+              <strong>No uses la purga para borrar fallos.</strong>
+              En modo sala está deshabilitada. Al tercer análisis fallido, tu
+              participación en la ronda termina.
+            </p>
+          </li>
+          <li>
+            <span class="waiting-room__rule-index" aria-hidden="true">04</span>
+            <p>
+              <strong>No manipules contadores, muestra ni validación.</strong>
+              El servidor detecta reinicios no autorizados, telemetría inválida
+              o victorias sin la matriz completa, y bloquea el puesto.
+            </p>
+          </li>
+          <li class="waiting-room__rule--wide">
+            <span class="waiting-room__rule-index" aria-hidden="true">05</span>
+            <p>
+              <strong>Permanece en esta sala hasta que el instructor inicie.</strong>
+              Si no estás conectado al comenzar la ronda, quedas fuera
+              automáticamente.
+            </p>
+          </li>
+        </ul>
+
+        <p class="waiting-room__rules-foot">
+          <span aria-hidden="true">⚠</span>
+          Estas reglas las aplica el servidor de forma automática. Un puesto
+          bloqueado solo se habilita cuando el instructor abre una nueva ronda.
+        </p>
+      </aside>
     </div>
   </section>
 

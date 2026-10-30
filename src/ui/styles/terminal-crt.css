@@ -1,45 +1,79 @@
 /* ========================================================================
- * terminal-crt.css — Estética industrial CRT / pantalla monocromática.
+ * terminal-crt.css — Sistema de diseño: consola de instrumentación.
  *
- * Paleta: verde fósforo sobre negro, con ruido y scanlines. La interfaz
- * es deliberadamente críptica: sin textos de ayuda explícita.
+ * Identidad: terminal industrial de precisión. Fósforo verde para señal viva,
+ * cian analítico para la muestra, ámbar para advertencia y rojo para
+ * contención. Superficies de vidrio ahumado, trazos de una sola línea y
+ * profundidad discreta (sin saturación ni efectos gratuitos).
+ *
+ * Esta capa define tokens, tipografía, fondo ambiental y accesibilidad.
  * ====================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700&family=Share+Tech+Mono&display=swap');
 
-/* --- Tokens de diseño industrial retro (Fase 4 - Identidad Visual) --- */
+/* --- Tokens ------------------------------------------------------------ */
 :root {
-  /* Paleta base y superficies (60-30-10) */
-  --industrial-bg-deep:         #030805;
-  --industrial-surface-panel:    #08140c;
-  --industrial-surface-inset:    rgba(0, 15, 8, 0.85);
-  --industrial-border-subtle:    rgba(0, 255, 115, 0.14);
-  --industrial-border-focus:     rgba(0, 255, 115, 0.5);
-  --industrial-grid-line:        rgba(0, 200, 90, 0.16);
-  --industrial-text-primary:     #00ff73;
-  --industrial-text-secondary:   #00b853;
-  --industrial-text-muted:       rgba(0, 180, 80, 0.5);
-  --industrial-target-signal:    #00d4ff;
-  --industrial-target-border:    #80e5ff;
-  --industrial-match-success:    #00ff88;
-  --industrial-accent-amber:     #ff9900;
-  --industrial-accent-red:       #ff3b30;
-  --industrial-font:             'Share Tech Mono', 'IBM Plex Mono', 'Consolas', 'Courier New', monospace;
-  --industrial-radius:           4px;
+  color-scheme: dark;
+
+  /* Superficies (escala de elevación) */
+  --industrial-bg-deep:         #030a08;
+  --industrial-bg:              #04100c;
+  --industrial-surface-panel:    #06130f;
+  --industrial-surface-raised:   #081b15;
+  --industrial-surface-inset:    rgba(0, 12, 9, 0.72);
+  --industrial-glass:            rgba(10, 32, 25, 0.55);
+
+  /* Líneas y bordes */
+  --industrial-border-subtle:    rgba(120, 240, 190, 0.13);
+  --industrial-border:           rgba(120, 240, 190, 0.2);
+  --industrial-border-strong:    rgba(120, 240, 190, 0.36);
+  --industrial-border-focus:     rgba(56, 217, 255, 0.75);
+  --industrial-grid-line:        rgba(70, 220, 160, 0.09);
+
+  /* Señales */
+  --industrial-text-primary:     #3ef2a0;
+  --industrial-text-secondary:   #22b877;
+  --industrial-text-muted:       rgba(143, 192, 170, 0.58);
+  --industrial-ink:              #d7f7e6;
+  --industrial-ink-dim:          #9cc9b5;
+  --industrial-target-signal:    #38d9ff;
+  --industrial-target-border:    #8fe8ff;
+  --industrial-match-success:    #3ef2a0;
+  --industrial-accent-amber:     #ffb454;
+  --industrial-accent-red:       #ff6257;
+
+  /* Tipografía */
+  --font-display: 'Oxanium', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Share Tech Mono', 'IBM Plex Mono', 'Consolas', 'Courier New', monospace;
+  --industrial-font: var(--font-mono);
+
+  /* Forma y profundidad */
+  --industrial-radius: 6px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-panel: 0 18px 50px -32px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(200, 255, 230, 0.05);
+  --shadow-raised: 0 26px 70px -40px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(200, 255, 230, 0.06);
+  --glow-phosphor: 0 0 18px rgba(62, 242, 160, 0.28);
+  --glow-cyan: 0 0 18px rgba(56, 217, 255, 0.28);
+
+  /* Movimiento */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /* Colores por canal (A = rojo, B = ámbar, C = cian) */
-  --channel-a-fill:              rgba(230, 57, 70, 0.78);
-  --channel-a-crest:             #ff6b6b;
-  --channel-a-border:            rgba(230, 57, 70, 0.4);
-  --channel-b-fill:              rgba(255, 183, 3, 0.78);
-  --channel-b-crest:             #ffd166;
-  --channel-b-border:            rgba(255, 183, 3, 0.4);
-  --channel-c-fill:              rgba(0, 180, 216, 0.78);
-  --channel-c-crest:             #48cae4;
-  --channel-c-border:            rgba(0, 180, 216, 0.4);
+  --channel-a-fill:              rgba(239, 91, 99, 0.8);
+  --channel-a-crest:             #ff8a90;
+  --channel-a-border:            rgba(239, 91, 99, 0.42);
+  --channel-b-fill:              rgba(255, 194, 71, 0.82);
+  --channel-b-crest:             #ffd98f;
+  --channel-b-border:            rgba(255, 194, 71, 0.42);
+  --channel-c-fill:              rgba(59, 201, 232, 0.82);
+  --channel-c-crest:             #8fe8ff;
+  --channel-c-border:            rgba(59, 201, 232, 0.42);
 }
 
-/* --- Reset y Base --- */
+/* --- Reset y base ------------------------------------------------------ */
 *,
 *::before,
 *::after {
@@ -51,53 +85,163 @@
 html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-size-adjust: 100%;
+  scrollbar-color: rgba(62, 242, 160, 0.35) rgba(0, 0, 0, 0.35);
+  scrollbar-width: thin;
 }
 
 body {
   font-family: var(--industrial-font);
-  background: var(--industrial-bg-deep);
-  color: var(--industrial-text-primary);
+  background-color: var(--industrial-bg-deep);
+  background-image:
+    radial-gradient(1100px 720px at 12% -12%, rgba(28, 150, 112, 0.16), transparent 60%),
+    radial-gradient(900px 640px at 105% 4%, rgba(20, 120, 150, 0.12), transparent 58%),
+    linear-gradient(180deg, #040f0c 0%, #030a08 48%, #020706 100%);
+  color: var(--industrial-ink);
   min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
   position: relative;
+  line-height: 1.5;
 }
 
-/* Scanlines globales suaves */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    180deg,
-    transparent 0px,
-    transparent 2px,
-    rgba(0, 0, 0, 0.04) 2px,
-    rgba(0, 0, 0, 0.04) 4px
-  );
-  pointer-events: none;
-  z-index: 9999;
-}
-
-/* Brillo CRT sutil */
+/* Retícula ambiental: da escala y profundidad al fondo sin competir con la UI. */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(0, 255, 115, 0.02) 0%,
-    transparent 75%
-  );
   pointer-events: none;
-  z-index: 9998;
+  z-index: 0;
+  background-image:
+    linear-gradient(var(--industrial-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--industrial-grid-line) 1px, transparent 1px),
+    radial-gradient(1100px 620px at 50% -18%, rgba(62, 242, 160, 0.12), transparent 65%);
+  background-size: 48px 48px, 48px 48px, 100% 100%;
+  -webkit-mask-image: radial-gradient(ellipse 120% 95% at 50% 28%, #000 20%, transparent 78%);
+  mask-image: radial-gradient(ellipse 120% 95% at 50% 28%, #000 20%, transparent 78%);
+  opacity: 0.85;
 }
 
-/* Parpadeo CRT general sutil */
-@keyframes flicker {
-  0% { opacity: 1; }
-  3% { opacity: 0.88; }
-  6% { opacity: 1; }
-  50% { opacity: 0.98; }
-  52% { opacity: 0.92; }
-  54% { opacity: 1; }
+/* Scanlines y viñeta: textura CRT contemporánea, muy contenida. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0,
+      transparent 3px,
+      rgba(0, 0, 0, 0.035) 3px,
+      rgba(0, 0, 0, 0.035) 4px
+    ),
+    radial-gradient(ellipse 105% 95% at 50% 45%, transparent 62%, rgba(0, 0, 0, 0.32) 100%);
+  opacity: 0.9;
+}
+
+/* La consola principal vive por encima del fondo ambiental. */
+.console {
+  position: relative;
+  z-index: 1;
+}
+
+/* --- Tipografía y detalles base --------------------------------------- */
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: var(--industrial-target-signal);
+}
+
+img, canvas, svg {
+  max-width: 100%;
+}
+
+::selection {
+  background: rgba(62, 242, 160, 0.28);
+  color: #eafff4;
+}
+
+/* Foco visible coherente en todo el producto (teclado / lectores de pantalla). */
+:focus-visible {
+  outline: 2px solid var(--industrial-border-focus);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(62, 242, 160, 0.22);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(62, 242, 160, 0.4);
+  background-clip: padding-box;
+}
+
+/* --- Animaciones compartidas ------------------------------------------ */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.18; }
+}
+
+@keyframes ledPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(62, 242, 160, 0.5), 0 0 8px rgba(62, 242, 160, 0.55); }
+  50% { box-shadow: 0 0 0 4px rgba(62, 242, 160, 0), 0 0 14px rgba(62, 242, 160, 0.85); }
+}
+
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Accesibilidad: movimiento reducido -------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  body::before,
+  body::after {
+    opacity: 0.6;
+  }
 }

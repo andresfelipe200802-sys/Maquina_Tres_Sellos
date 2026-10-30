@@ -1553,3 +1553,159 @@ Con `trust proxy` activo y el backend solo accesible desde loopback, las cadenas
 - **`INSTRUCTOR_PASSWORD`** en `server/.env` ya fue cambiada a una clave personal: no la repitas en ningún documento ni pantalla, y no la subas a git. Si se filtrara, cámbiala (el nuevo valor rige desde el próximo inicio del script).
 - El estado en memoria (`-Memoria`) se pierde al detener el script; sin ese parámetro se usa MySQL local.
 - Es una solución de aula/presentación, no de alta disponibilidad: depende de la red local, del consumo de la PC y de la gratuidad del túnel efímero de Cloudflare.
+
+# Fase 7. Rediseño visual: consola de instrumentación (30-10-2026)
+
+## 1. Objetivo y alcance
+
+Se rediseñó la capa visual completa de las tres superficies del producto (juego del aprendiz, capa de sala y panel del instructor) sin tocar reglas del acertijo, validaciones, protocolos, almacenamiento ni contratos de datos. La intervención fue de presentación: tokens, composición, tipografía, profundidad, estados, animaciones y adaptación a pantallas.
+
+Restricciones respetadas:
+
+- Sigue siendo TypeScript vanilla + CSS + Vite, **sin dependencias de runtime nuevas** (se descartaron Three.js y GSAP: no aportaban frente a la regla cero-dependencias).
+- `src/core/` permanece libre de navegador y sin cambios.
+- Se conservaron IDs, `data-action`, clases de estado, textos y el flujo del controlador.
+- No se añadieron reglas de juego ni atajos anti-trampa.
+
+## 2. Identidad y sistema de diseño
+
+La estética evoluciona de "terminal CRT retro" a **consola de instrumentación industrial de precisión**: superficies de vidrio ahumado, trazos de un solo píxel, profundidad discreta y señal luminosa solo donde hay información viva.
+
+| Elemento | Decisión |
+| :--- | :--- |
+| Tipografía | `Oxanium` para títulos, placas y cifras de mando; `Share Tech Mono` para datos, telemetría y textos técnicos. Cargadas por Google Fonts con fallback a `system-ui`/`Consolas`. |
+| Paleta | Fondo verde-negro profundo; fósforo verde para señal activa; cian para muestra/análisis; ámbar para advertencia; rojo para contención. Sin neones saturados ni degradados ajenos a la identidad. |
+| Profundidad | Biseles, hairlines internos, reflejo de vidrio, teclas mecánicas con recorrido de 1 px y paneles con sombra amplia y suave. El 3D se reserva para el tanque de acceso, el núcleo del login y el panel de enclavamiento. |
+| Movimiento | Barrido lento en las pantallas, pulso de LEDs y entrada de overlays. Todo decorativo y desactivable con `prefers-reduced-motion`. |
+| Firma | Retícula ambiental enmascarada, scanlines muy tenues y viñeta; el contenido siempre por encima del fondo. |
+
+Tokens principales en `src/ui/styles/terminal-crt.css`: superficies, líneas, señales, tipografía, radios, sombras, curvas de movimiento y colores de canal A/B/C. Los tokens `--industrial-*`, `--online-*` y `--dash-*` se conservaron para no romper reglas existentes.
+
+## 3. Archivos modificados
+
+| Archivo | Cambio |
+| :--- | :--- |
+| `src/ui/styles/terminal-crt.css` | Sistema de diseño, tipografía dual, fondo ambiental, foco visible, scrollbar, selección y movimiento reducido. |
+| `src/ui/styles/layout.css` | Consola de 5 bandas, cabecera, placas y teclas, pantallas con reflejo/barrido, telemetría, cronómetro, acciones, overlays de victoria y enclavamiento; responsive de 1100/860/700/420 px y dispositivos táctiles. |
+| `src/ui/styles/online.css` | Puerta de acceso con tanque 3D, sala de espera con manómetro y protocolo de permanencia, congelamiento y fin de sesión; responsive y reduced-motion. |
+| `instructor/dashboard.css` | Login con núcleo 3D, shell del panel, barra de mando, matriz 9×5, tarjetas de puesto, estados, empty state, toast y responsive. |
+| `src/index.ts` | `setCanvasResolution` usa tamaño físico con DPR y deja el contexto escalado a píxeles CSS. |
+| `src/ui/components/TargetDisplayView.ts` | Dibujo con tamaño lógico CSS; etiqueta compacta en pantallas angostas. |
+| `src/ui/components/RowCarouselView.ts` | Dibujo con tamaño lógico CSS. |
+| `src/ui/components/LiveSumSpectrumView.ts` | Dibujo con tamaño lógico CSS; etiquetas compactas (`SUMA EN VIVO // Σ`, `n/16 COL`). |
+| `index.html` | `theme-color`, `preconnect` a Google Fonts y protocolo de permanencia en la sala de espera. Sin cambios de estructura del juego. |
+| `instructor/index.html` | `theme-color` y `preconnect` a Google Fonts. Sin cambios de estructura. |
+| `CAMBIOS_REDISEÑO.md` | Este registro. |
+
+No se creó ningún archivo de runtime nuevo ni se modificó `package.json`.
+
+## 4. Rediseño por superficie
+
+### 4.1 Consola del aprendiz
+
+- Cabecera tipo barra de instrumento: LED de encendido, título en `Oxanium`, subtítulo técnico y hairline superior con degradado.
+- Panel de calibración con doble bisel y cinco bandas: muestra, canales A/B/C, suma y resultado.
+- Placas de canal coloreadas y LEDs; teclas de desplazamiento con relieve, hundido al pulsar y foco visible.
+- Pantallas con reflejo de vidrio, viñeta interna y barrido vertical lento; el canvas conserva su render propio.
+- Bahía lateral modular: ayuda plegable, cronómetro, telemetría, estado y acciones. `ANALIZAR MUESTRA` es la acción primaria (sólida); `PURGAR SISTEMA` queda como acción destructiva secundaria.
+- Cronómetro con estados normal / advertencia / crítico y barra de progreso coherente.
+- Overlay de victoria con glow cian y entrada suave; overlay de enclavamiento conserva el estroboscopio y el panel 3D, pero con rojo menos ácido, tipografía más legible y scroll interno en pantallas bajas.
+
+### 4.2 Capa de sala
+
+- Puerta de acceso a dos columnas en escritorio: escena del tanque a la izquierda y panel de vidrio a la derecha. El tanque comunica nivel, presión y disponibilidad con líquido, burbujas y escala.
+- Formulario con input de gran tamaño, estado del servidor por tonos (ok/warn/error), botón de reintento y acceso al panel del instructor.
+- Sala de espera con manómetro animado, datos de ronda y estado; congelamiento con anillo y barras; fin de sesión diferenciado por tipo (`finished` en cian, expulsión/finalización en rojo).
+- En móvil la escena se reduce y el panel ocupa el ancho disponible; si la altura es muy baja, la escena se oculta para priorizar el acceso.
+
+#### 4.2.1 Protocolo de permanencia en la sala de espera
+
+Se añadió una banda de **protocolo de permanencia** dentro del panel de espera, visible mientras el jugador aguarda la señal del instructor. No requiere interacción, no bloquea el inicio y no añade temporizadores ni lógica nueva: es contenido estático dentro del marcado existente.
+
+Contenido:
+
+1. No recargar, cerrar ni cambiar de pestaña durante la partida (con la salvedad de la ventana de gracia en la sala de espera).
+2. No abrir la sesión en otra pestaña o equipo: solo una pantalla por aprendiz.
+3. No usar la purga para borrar fallos: en sala está deshabilitada y el tercer fallo termina la participación.
+4. No manipular contadores, muestra ni validación: el servidor detecta reinicios, telemetría inválida o victorias sin matriz completa.
+5. Permanecer conectado en la sala hasta el inicio: quien no está presente queda fuera.
+
+El pie aclara que las reglas las aplica el servidor automáticamente y que un puesto bloqueado solo se habilita al abrir una nueva ronda. El texto está alineado con `BLOCK_REASONS` de `server/src/RoundService.ts`; si esas políticas cambian, debe actualizarse esta copia.
+
+En escritorio la banda ocupa el ancho completo bajo el manómetro y el resumen; en tablet se apila y en teléfonos se prioriza el protocolo: se ocultan el manómetro decorativo, la nota que repite la regla 01 y el pulso de espera, y se compacta el espaciado. El centrado del panel usa `safe center` para que, si el contenido supera la altura, empiece desde arriba en lugar de recortar la cabecera. Verificado a 1440×900, 1366×768 y 390×844 (DPR 2): cinco reglas y pie de consecuencias visibles, sin desbordamiento horizontal ni scroll en el teléfono.
+
+### 4.3 Panel del instructor
+
+- Login a dos columnas con núcleo 3D, lecturas técnicas y panel de credenciales.
+- Shell del panel: cabecera, barra de mando (sala, cronómetro, ocupación, acciones) y matriz 9×5 como objeto principal.
+- Tarjetas de puesto con barra de estado, nombre, cuatro métricas y botón de retiro al hover/foco.
+- Leyenda, contador de ocupación, empty state y toast de error con entrada animada.
+- La matriz se convierte en 5 columnas × 9 filas a ≤1100 px y en 2 columnas a ≤720 px; en esos tamaños el panel pasa a scroll vertical, decisión consciente para no reducir las tarjetas a un tamaño ilegible.
+
+## 5. Responsividad verificada
+
+| Resolución | Comportamiento | Desbordamiento horizontal |
+| :--- | :--- | :--- |
+| 1440×900 | Consola completa en viewport, sin scroll | No |
+| 1366×768 | Consola completa en viewport | No |
+| 1280×720 | Consola completa, densidad reducida | No |
+| 820×1180 (tablet táctil) | Una columna, acciones a ancho completo | No |
+| 390×844 (DPR 2) | Una columna, etiquetas canvas compactas | No |
+| 360×640 (DPR 2) | Una columna, botones táctiles ampliados | No |
+
+Puntos de quiebre principales: 1100 px (bahía más estrecha), 860 px (una columna), 700 px (móvil), 420 px (compacto) y altura ≤720 px (densidad). Los botones de canal quedan en 32–36 px para no romper la columna de rótulos; las acciones principales son de 46–52 px. En `hover: none` y `pointer: coarse` se amplían los objetivos táctiles y el toggle de ayuda.
+
+## 6. Corrección HiDPI (bug preexistente detectado en la verificación)
+
+**Síntoma:** en móviles y pantallas retina (DPR ≥ 2) los tres canvas dibujaban al doble de tamaño y el contenido quedaba recortado: solo se veía el cuadrante superior izquierdo.
+
+**Causa:** `setCanvasResolution` fijaba `canvas.width/height` al tamaño físico (`CSS × DPR`) y además escalaba el contexto por DPR, mientras las vistas usaban `canvas.width/height` como coordenadas de dibujo. El resultado era una escala doble.
+
+**Corrección:** el contexto sigue escalándose por DPR para mantener nitidez, pero las vistas ahora dibujan en píxeles CSS lógicos (`clientWidth/clientHeight`, con fallback al atributo para el DOM de pruebas). No cambia ninguna regla del juego ni el tamaño visual; solo la resolución interna.
+
+**Evidencia medida (390×844, DPR 2):**
+
+| Canvas | Tamaño CSS | Backing store | Relación |
+| :--- | :--- | :--- | :--- |
+| `#target-canvas` | 274×88 | 548×176 | 2,0× |
+| `#rows-canvas` | 260×198 | 520×396 | 2,0× |
+| `#sum-canvas` | 274×88 | 548×176 | 2,0× |
+
+En la captura final se ven las 16 columnas completas, las tres filas y la suma, sin recortes.
+
+## 7. Accesibilidad
+
+- Foco visible global y por componente (`:focus-visible`) con contraste sobre vidrio oscuro.
+- Contraste de texto principal y secundario revisado sobre las nuevas superficies; los estados no dependen solo del color (texto + punto + etiqueta).
+- `prefers-reduced-motion: reduce` detiene barridos, pulsos, burbujas, agujas y estroboscopios; las transiciones se reducen a 0,01 ms.
+- Objetivos táctiles ampliados en punteros gruesos; ayuda con `aria-expanded`; botones de retiro con `aria-label`.
+- No se introdujeron trampas de foco ni cambios en el orden de tabulación.
+
+## 8. Pruebas y resultados
+
+| Comprobación | Resultado |
+| :--- | :--- |
+| `npm run typecheck` | ✅ Sin errores |
+| `npm test` | ✅ 10 archivos, 105/105 pruebas |
+| `npm run build` | ✅ Build de producción (45 módulos) |
+| `npm run test:server` | ✅ 17/17 pruebas (HTTP + WebSocket + RoundService) |
+| Consola en 1440/1366/1280/820/390/360 | ✅ Sin scroll horizontal; consola completa en escritorio |
+| DPR 2 en 390×844 | ✅ Canvas completos, etiquetas sin solaparse |
+| Ayuda | ✅ Abre/cierra; `aria-expanded="true"`; la bahía no desborda (814/814 px) |
+| Movimientos | ✅ 0 → 3 tras tres pulsaciones |
+| Tercer fallo | ✅ Overlay de enclavamiento visible, estado `BLOQUEADO`, fallos `3` |
+| Purga | ✅ Fallos `0`, movimientos `0`, estado `EN OPERACIÓN`, cronómetro `15:00` |
+| Protocolo de permanencia | ✅ 5 reglas + consecuencias visibles en espera; sin overflow en 1440/1366/390; cabecera completa en móvil |
+| Matriz del instructor | ✅ 45 tarjetas; 1440: 151×126 px; 1024: 192×96 px; 390: 176×104 px; sin overflow |
+| Cabecera del panel en 390 | ✅ 94 px de alto, meta de conexión/salida visible |
+
+Las capturas y el script de verificación se generaron fuera del repositorio, en `%TEMP%\opencode\pw2\`, y no se versionan.
+
+## 9. Limitaciones y notas
+
+- **Fuentes externas:** `Oxanium` y `Share Tech Mono` se cargan desde Google Fonts. Sin red, la interfaz usa los fallbacks del sistema y conserva estructura y legibilidad, pero cambia el carácter tipográfico.
+- **Canvas y orientación:** el tamaño interno se calcula al arrancar. Si se gira el dispositivo o se redimensiona la ventana, el canvas se estira por CSS hasta la próxima repetición; no se añadió `ResizeObserver` para no alterar el ciclo de vida de las vistas.
+- **Panel en tablet/móvil:** 1024 px y 390 px usan scroll vertical por diseño; 45 puestos con métricas no caben sin reducir la tipografía por debajo de lo legible.
+- **Verificación del panel:** el layout con tarjetas reales se comprobó inyectando datos de muestra en el DOM de la prueba; la lógica de sesión, cupos, congelamiento y expulsión está cubierta por las 17 pruebas del servidor.
+- **Sin commit:** los cambios quedan en el árbol de trabajo para revisión del usuario. Publicarlos en GitHub Pages requiere commit, push y recarga forzada en los equipos de los alumnos.
+- El proyecto queda compilando y funcionando; no se añadieron dependencias.
